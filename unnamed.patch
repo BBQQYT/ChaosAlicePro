@@ -1,0 +1,17 @@
+Index: app/src/main/AndroidManifest.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml	(date 1751380716482)
+@@ -14,7 +14,7 @@
+         android:roundIcon="@mipmap/ic_launcher_round"
+         android:supportsRtl="true"
+         android:theme="@style/Theme.ChaosAlicePro"
+-        tools:targetApi="31"
++        tools:targetApi="36"
+         android:name=".ChaosAliceApp">
+ 
+     <activity

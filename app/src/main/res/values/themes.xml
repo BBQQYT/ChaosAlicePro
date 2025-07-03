@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.ChaosAlicePro" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Фон сплэш-скрина -->
+        <item name="windowSplashScreenBackground">@color/black</item>  <!-- Укажи цвет фона, например, @color/purple_80 или создай новый -->
+
+        <!-- Иконка в центре -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item> <!-- Используем твой стандартный значок -->
+
+        <!-- Тема, на которую переключится приложение после сплэш-скрина -->
+        <item name="postSplashScreenTheme">@style/Theme.ChaosAlicePro</item>
+    </style>
+</resources>
