@@ -6,7 +6,6 @@ import chaos.alice.pro.data.local.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
-// ViewModel, которая "держит" в себе TokenManager
 @HiltViewModel
 class MainAppViewModel @Inject constructor(
     val tokenManager: TokenManager,

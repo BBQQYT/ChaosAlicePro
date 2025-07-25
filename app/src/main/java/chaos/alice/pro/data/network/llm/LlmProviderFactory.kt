@@ -12,19 +12,11 @@ class LlmProviderFactory @Inject constructor(
 ) {
     fun getProvider(apiProvider: ApiProvider): LlmProvider {
         return when (apiProvider) {
-            // Для Gemini используем его специальную реализацию
             ApiProvider.GEMINI -> geminiProvider.get()
 
-            // Для всех, кто совместим с OpenAI, используем нашу общую реализацию
             ApiProvider.OPEN_AI,
-            ApiProvider.OPEN_ROUTER,
-            ApiProvider.DEEPSEEK,
-            ApiProvider.TOGETHER -> openAiCompatibleProvider.get()
+            ApiProvider.OPEN_ROUTER -> openAiCompatibleProvider.get()
 
-            // Qwen требует своей реализации. Пока ее нет, бросаем ошибку.
-            ApiProvider.QWEN -> {
-                throw NotImplementedError("Provider ${apiProvider.displayName} is not implemented yet.")
-            }
         }
     }
 }

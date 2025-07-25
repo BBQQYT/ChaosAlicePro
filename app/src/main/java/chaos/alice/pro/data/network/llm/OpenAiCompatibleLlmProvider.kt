@@ -6,21 +6,29 @@ import chaos.alice.pro.data.local.Sender
 import chaos.alice.pro.data.models.ApiProvider
 import chaos.alice.pro.data.network.llm.openai.ChatCompletionRequest
 import chaos.alice.pro.data.network.llm.openai.ChatMessage
+import chaos.alice.pro.data.network.llm.openai.ChatCompletionChunkResponse
 import chaos.alice.pro.data.network.llm.openai.ErrorResponse
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+import okhttp3.ResponseBody
+import retrofit2.HttpException
 
 class OpenAiCompatibleLlmProvider @Inject constructor(
     private val apiService: GenericLlmApiService,
-    private val json: Json // Внедряем Json для ручного парсинга
+    private val json: Json
 ) : LlmProvider {
 
-    override suspend fun generateResponse(
+    override suspend fun generateResponseStream(
         apiKey: String,
         systemPrompt: String?,
         history: List<MessageEntity>,
         userMessage: MessageEntity
-    ): String {
+    ): Flow<String> {
         val url = getApiUrl(userMessage.apiProvider)
         val model = userMessage.modelName
             ?: throw IllegalStateException("Model name not provided for ${userMessage.apiProvider.name}")
@@ -35,55 +43,68 @@ class OpenAiCompatibleLlmProvider @Inject constructor(
 
         val request = ChatCompletionRequest(
             model = model,
-            messages = messages
+            messages = messages,
+            stream = true
         )
 
-        try {
-            val response = apiService.generateChatCompletion(
-                url = url,
-                apiKey = "Bearer $apiKey",
-                request = request
-            )
+        return flow {
+            try {
+                val response = apiService.generateChatCompletionStream(
+                    url = url,
+                    apiKey = "Bearer $apiKey",
+                    request = request
+                )
 
-            if (response.isSuccessful) {
-                // Успешный ответ (код 2xx)
-                val body = response.body()
-                return body?.choices?.firstOrNull()?.message?.content
-                    ?: throw Exception("Успешный ответ, но тело или сообщение пустое.")
-            } else {
-                // Ответ с ошибкой (код 4xx или 5xx)
-                val errorBody = response.errorBody()?.string()
-                if (errorBody != null) {
-                    try {
-                        // Пытаемся распарсить как нашу модель ошибки
-                        val errorResponse = json.decodeFromString<ErrorResponse>(errorBody)
-                        throw Exception(errorResponse.error.message) // Выбрасываем понятное сообщение
-                    } catch (e: Exception) {
-                        // Если не удалось распарсить JSON ошибки, показываем "сырой" ответ
-                        Log.e("OpenAiProvider", "Failed to parse error JSON: $errorBody", e)
-                        throw Exception("Ошибка API (код ${response.code()}): $errorBody")
-                    }
-                } else {
-                    throw Exception("Неизвестная ошибка API (код ${response.code()})")
+                if (!response.isSuccessful) {
+                    val errorBody = response.errorBody()?.string()
+                    throw HttpException(response)
                 }
+
+                val body = response.body() ?: throw Exception("Response body is null")
+
+                body.source().use { source ->
+                    while (!source.exhausted()) {
+                        val line = source.readUtf8Line()
+                        if (line?.startsWith("data:") == true) {
+                            val jsonString = line.substring(5).trim()
+                            if (jsonString == "[DONE]") {
+                                break
+                            }
+                            try {
+                                val chunk = json.decodeFromString<ChatCompletionChunkResponse>(jsonString)
+                                val content = chunk.choices.firstOrNull()?.delta?.content
+                                if (content != null) {
+                                    emit(content)
+                                }
+                            } catch (e: Exception) {
+                                Log.e("OpenAiProvider", "Failed to parse stream chunk: $jsonString", e)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("OpenAiProvider", "API Stream Error for provider ${userMessage.apiProvider.name}", e)
+                val errorMessage = when (e) {
+                    is HttpException -> {
+                        val errorBody = e.response()?.errorBody()?.string()
+                        try {
+                            json.decodeFromString<ErrorResponse>(errorBody!!).error.message
+                        } catch (parseEx: Exception) {
+                            errorBody ?: e.message()
+                        }
+                    }
+                    else -> e.message ?: "Unknown stream error"
+                }
+                throw Exception("Ошибка API: $errorMessage")
             }
-        } catch (e: Exception) {
-            Log.e("OpenAiProvider", "API Error for provider ${userMessage.apiProvider.name}", e)
-            // Перебрасываем исключение, чтобы ChatRepository мог его поймать
-            throw e
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     private fun getApiUrl(provider: ApiProvider): String {
-        // ... (этот метод без изменений)
         return when (provider) {
             ApiProvider.OPEN_AI -> "https://api.openai.com/v1/chat/completions"
             ApiProvider.OPEN_ROUTER -> "https://openrouter.ai/api/v1/chat/completions"
-            ApiProvider.TOGETHER -> "https://api.together.xyz/v1/chat/completions"
-            ApiProvider.DEEPSEEK -> "https://api.deepseek.com/v1/chat/completions"
-            ApiProvider.QWEN, ApiProvider.GEMINI -> throw IllegalArgumentException(
-                "Provider ${provider.name} is not OpenAI-compatible and should not be handled by this class."
-            )
+            else -> throw IllegalArgumentException("Provider ${provider.name} is not supported by this class.")
         }
     }
 }

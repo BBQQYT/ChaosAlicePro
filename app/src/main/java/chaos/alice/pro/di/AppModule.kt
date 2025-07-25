@@ -27,7 +27,6 @@ object AppModule {
             .build()
     }
 
-    // 👇 ВОТ ОН, ВЕРНУЛСЯ НА СВОЕ МЕСТО
     @Provides
     @Singleton
     fun provideChatDao(appDatabase: AppDatabase): ChatDao {

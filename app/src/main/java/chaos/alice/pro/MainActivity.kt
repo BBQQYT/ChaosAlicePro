@@ -14,12 +14,8 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    // LicenseViewModel больше не нужна здесь
-    // private val licenseViewModel: LicenseViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Сплэш-скрин теперь будет скрываться сразу, без условий.
-        // Можно оставить installSplashScreen() для красивого эффекта перехода.
         installSplashScreen()
 
         super.onCreate(savedInstanceState)
@@ -29,8 +25,6 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Больше нет when-блока для состояний лицензии.
-                    // Просто показываем MainApp.
                     MainApp()
                 }
             }

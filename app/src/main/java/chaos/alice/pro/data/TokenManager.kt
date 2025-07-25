@@ -1,7 +1,6 @@
 package chaos.alice.pro.data
 
 import android.content.Context
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import chaos.alice.pro.data.models.ApiProvider
@@ -11,51 +10,42 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// ЭТОЙ СТРОКИ ЗДЕСЬ БЫТЬ НЕ ДОЛЖНО:
-// private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
-
 @Singleton
 class TokenManager @Inject constructor(@ApplicationContext private val context: Context) {
 
     companion object {
-        private val TOKEN_KEY = stringPreferencesKey("api_token")
-        private val PROVIDER_KEY = stringPreferencesKey("api_provider")
-        private val MODEL_NAME_KEY = stringPreferencesKey("model_name") // <-- НОВЫЙ КЛЮЧ
+        private val ACTIVE_PROVIDER_KEY = stringPreferencesKey("active_api_provider")
+        private val GEMINI_TOKEN_KEY = stringPreferencesKey("gemini_api_token")
+        private val OPENAI_TOKEN_KEY = stringPreferencesKey("openai_api_token")
+        private val OPENROUTER_TOKEN_KEY = stringPreferencesKey("openrouter_api_token")
     }
 
-    fun getToken(): Flow<String?> {
-        // Используем общий data store
+    fun getActiveProvider(): Flow<ApiProvider> {
         return context.settingsDataStore.data.map { preferences ->
-            preferences[TOKEN_KEY]
+            val providerName = preferences[ACTIVE_PROVIDER_KEY] ?: ApiProvider.GEMINI.name
+            try {
+                ApiProvider.valueOf(providerName)
+            } catch (e: IllegalArgumentException) {
+                ApiProvider.GEMINI
+            }
         }
     }
 
-    fun getProvider(): Flow<ApiProvider> {
-        // Используем общий data store
-        return context.settingsDataStore.data.map { preferences ->
-            val providerName = preferences[PROVIDER_KEY] ?: ApiProvider.OPEN_ROUTER.name
-            ApiProvider.valueOf(providerName)
-        }
-    }
+    fun getGeminiKey(): Flow<String?> = context.settingsDataStore.data.map { it[GEMINI_TOKEN_KEY] }
+    fun getOpenAiKey(): Flow<String?> = context.settingsDataStore.data.map { it[OPENAI_TOKEN_KEY] }
+    fun getOpenRouterKey(): Flow<String?> = context.settingsDataStore.data.map { it[OPENROUTER_TOKEN_KEY] }
 
-    fun getModelName(): Flow<String?> {
-        return context.settingsDataStore.data.map { preferences ->
-            preferences[MODEL_NAME_KEY]
-        }
-    }
-
-    // --- ОБНОВЛЕННАЯ ФУНКЦИЯ СОХРАНЕНИЯ ---
-    suspend fun saveSettings(token: String, provider: ApiProvider, model: String) {
+    suspend fun saveSettings(
+        activeProvider: ApiProvider,
+        geminiKey: String,
+        openAiKey: String,
+        openRouterKey: String
+    ) {
         context.settingsDataStore.edit { preferences ->
-            preferences[TOKEN_KEY] = token
-            preferences[PROVIDER_KEY] = provider.name
-            preferences[MODEL_NAME_KEY] = model
+            preferences[ACTIVE_PROVIDER_KEY] = activeProvider.name
+            preferences[GEMINI_TOKEN_KEY] = geminiKey
+            preferences[OPENAI_TOKEN_KEY] = openAiKey
+            preferences[OPENROUTER_TOKEN_KEY] = openRouterKey
         }
-    }
-
-    // Старый метод можно либо удалить, либо оставить для обратной совместимости
-    suspend fun saveTokenAndProvider(token: String, provider: ApiProvider) {
-        saveSettings(token, provider, "") // Сохраняем с пустой моделью
     }
 }

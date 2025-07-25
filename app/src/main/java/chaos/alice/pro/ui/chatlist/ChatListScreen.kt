@@ -2,7 +2,6 @@ package chaos.alice.pro.ui.chatlist
 
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -28,73 +27,23 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import chaos.alice.pro.data.network.Persona
-import chaos.alice.pro.di.LicenseState
-import chaos.alice.pro.di.LicenseViewModel
-import chaos.alice.pro.ui.piracy.PiracyScreen
 import coil.compose.AsyncImage
-import androidx.compose.runtime.LaunchedEffect
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatListScreen(
     onChatClicked: (Long) -> Unit,
     onSettingsClicked: () -> Unit,
-    chatListViewModel: ChatListViewModel = hiltViewModel(),
-    licenseViewModel: LicenseViewModel = hiltViewModel()
+    chatListViewModel: ChatListViewModel = hiltViewModel()
 ) {
-    // 👇👇👇 ДОБАВЬТЕ ЭТОТ ЛОГ 👇👇👇
-    Log.d("ChatListScreen", "Composable recomposing. chatListVM: $chatListViewModel, licenseVM: $licenseViewModel")
-
     val uiState by chatListViewModel.uiState.collectAsStateWithLifecycle()
-    val licenseState by licenseViewModel.licenseState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        // 👇 И ЭТОТ ЛОГ 👇
-        Log.d("ChatListScreen", "LaunchedEffect(Unit) triggered. Calling checkLicense().")
-        licenseViewModel.checkLicense()
-    }
-
-    LaunchedEffect(licenseState) {
-        // 👇 И ЭТОТ ЛОГ 👇
-        Log.d("ChatListScreen", "LaunchedEffect(licenseState) triggered. New state: $licenseState")
-        chatListViewModel.updateLicenseState(licenseState)
-    }
-
-
-    // 👇👇👇 ГЛАВНОЕ ИЗМЕНЕНИЕ 👇👇👇
-    // Создаем Box, который будет корневым элементом этого экрана.
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        // 1. Основной контент экрана со Scaffold
-        MainChatListContent(
-            uiState = uiState,
-            onChatClicked = onChatClicked,
-            onSettingsClicked = onSettingsClicked,
-            chatListViewModel = chatListViewModel
-        )
-
-        // 2. Экраны лицензии, которые будут рисоваться ПОВЕРХ всего остального
-        when (val currentLicenseState = uiState.licenseState) {
-            is LicenseState.Invalid -> {
-                // Этот экран теперь будет занимать все пространство и блокировать доступ
-                PiracyScreen(deviceId = currentLicenseState.deviceId)
-            }
-            is LicenseState.NetworkError -> {
-                // Диалог по своей природе модальный и тоже заблокирует все
-                AlertDialog(
-                    onDismissRequest = { chatListViewModel.dismissLicenseError() },
-                    title = { Text("Ошибка сети") },
-                    text = { Text("Не удалось проверить лицензию. Проверьте подключение к интернету и доступ к GitHub.") },
-                    confirmButton = {
-                        TextButton(onClick = { chatListViewModel.dismissLicenseError() }) {
-                            Text("OK")
-                        }
-                    }
-                )
-            }
-            else -> { /* Valid, Loading или null - ничего не делаем */ }
-        }
-    }
+    MainChatListContent(
+        uiState = uiState,
+        onChatClicked = onChatClicked,
+        onSettingsClicked = onSettingsClicked,
+        chatListViewModel = chatListViewModel
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -212,15 +161,14 @@ fun DeleteConfirmDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatCardItem(
     item: ChatWithPersona,
     onClick: () -> Unit,
-    onLongClick: () -> Unit // <-- НОВЫЙ ПАРАМЕТР
+    onLongClick: () -> Unit
 ) {
     Card(
-        // 👇 Card не имеет onLongClick, поэтому используем Modifier.combinedClickable
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(
@@ -253,7 +201,7 @@ fun ChatCardItem(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Персонаж: ${item.persona?.name ?: "Неизвестно"}", // Заглушка, потом заменим на последнее сообщение
+                    text = "Персонаж: ${item.persona?.name ?: "Неизвестно"}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -265,7 +213,7 @@ fun ChatCardItem(
 }
 
 
-@OptIn(ExperimentalFoundationApi::class) // <-- Нужен для stickyHeader
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PersonaSelectionDialog(
     officialPersonas: List<Persona>,
@@ -278,7 +226,6 @@ fun PersonaSelectionDialog(
         title = { Text("Выберите персонажа") },
         text = {
             LazyColumn {
-                // Блок с официальными персонажами
                 if (officialPersonas.isNotEmpty()) {
                     stickyHeader {
                         Surface(modifier = Modifier.fillParentMaxWidth()) {
@@ -290,7 +237,6 @@ fun PersonaSelectionDialog(
                     }
                 }
 
-                // Блок с кастомными персонажами
                 if (customPersonas.isNotEmpty()) {
                     stickyHeader {
                         Surface(modifier = Modifier.fillParentMaxWidth()) {
@@ -303,7 +249,7 @@ fun PersonaSelectionDialog(
                 }
             }
         },
-        confirmButton = { /* ... */ }
+        confirmButton = {}
     )
 }
 

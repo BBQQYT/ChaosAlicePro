@@ -1,42 +1,69 @@
 package chaos.alice.pro.data.network.llm
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.util.Log
+import androidx.core.net.toUri
 import chaos.alice.pro.data.local.MessageEntity
 import chaos.alice.pro.data.local.Sender
 import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.Content
 import com.google.ai.client.generativeai.type.content
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-class GeminiLlmProvider @Inject constructor() : LlmProvider {
+class GeminiLlmProvider @Inject constructor(
+    @ApplicationContext private val context: Context
+) : LlmProvider {
 
-    override suspend fun generateResponse(
+    override suspend fun generateResponseStream(
         apiKey: String,
         systemPrompt: String?,
         history: List<MessageEntity>,
         userMessage: MessageEntity
-    ): String {
+    ): Flow<String> {
+
+        val modelName = userMessage.modelName ?: "gemini-1.5-flash"
+
         val model = GenerativeModel(
-            modelName = "gemini-1.5-flash",
-            apiKey = apiKey
+            modelName = modelName,
+            apiKey = apiKey,
+            systemInstruction = content { text(systemPrompt ?: "") }
         )
 
-        val historyForModel = mutableListOf<Content>()
-
-        // Добавляем системный промпт, если он есть
-        systemPrompt?.let {
-            historyForModel.add(content(role = "user") { text(it) })
-            historyForModel.add(content(role = "model") { text("Хорошо, я понял. Я буду следовать этим инструкциям.") })
+        val fullHistory = buildList {
+            history.forEach { message ->
+                if (message.imageUri == null) {
+                    add(content(if (message.sender == Sender.USER) "user" else "model") { text(message.text) })
+                }
+            }
+            add(content("user") {
+                userMessage.imageUri?.let {
+                    try {
+                        image(it.toUri().toBitmap(context))
+                    } catch (e: Exception) {
+                        Log.e("GeminiProvider", "Image Load Error", e)
+                    }
+                }
+                text(userMessage.text)
+            })
         }
 
-        // Добавляем историю чата
-        history.forEach { message ->
-            val role = if (message.sender == Sender.USER) "user" else "model"
-            historyForModel.add(content(role = role) { text(message.text) })
+        return model.generateContentStream(*fullHistory.toTypedArray())
+            .map { response -> response.text ?: "" }
+    }
+
+    private fun Uri.toBitmap(context: Context): Bitmap {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, this))
+        } else {
+            @Suppress("DEPRECATION")
+            MediaStore.Images.Media.getBitmap(context.contentResolver, this)
         }
-
-        val chatSession = model.startChat(history = historyForModel)
-        val response = chatSession.sendMessage(userMessage.text)
-
-        return response.text ?: throw Exception("Не удалось получить ответ от Gemini.")
     }
 }

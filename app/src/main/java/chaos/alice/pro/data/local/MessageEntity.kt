@@ -12,7 +12,8 @@ data class MessageEntity(
     val text: String,
     val sender: Sender,
     val timestamp: Long,
-    val isError: Boolean = false
+    val isError: Boolean = false,
+    val imageUri: String? = null
 ) {
 
     @Ignore

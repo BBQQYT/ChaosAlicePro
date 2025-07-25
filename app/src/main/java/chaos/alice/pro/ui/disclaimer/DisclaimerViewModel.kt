@@ -12,9 +12,9 @@ import javax.inject.Inject
 
 // Состояния экрана
 enum class DisclaimerStep {
-    AGE_CONFIRMATION, // Шаг 1: 18+
-    NON_COMMERCIAL_NOTICE, // Шаг 2: Некоммерческое
-    FINISHED // Дисклеймеры показаны
+    AGE_CONFIRMATION,
+    NON_COMMERCIAL_NOTICE,
+    FINISHED
 }
 
 data class DisclaimerUiState(
@@ -30,16 +30,12 @@ class DisclaimerViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     fun onConfirmAge() {
-        // После подтверждения возраста переходим к следующему шагу
         _uiState.update { it.copy(currentStep = DisclaimerStep.NON_COMMERCIAL_NOTICE) }
     }
 
     fun onConfirmNotice() {
-        // После подтверждения второго дисклеймера
         viewModelScope.launch {
-            // 1. Сохраняем в DataStore, что все показали
             settingsRepository.markDisclaimersAsShown()
-            // 2. Меняем состояние на FINISHED, чтобы UI мог среагировать
             _uiState.update { it.copy(currentStep = DisclaimerStep.FINISHED) }
         }
     }

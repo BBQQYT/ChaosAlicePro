@@ -11,34 +11,22 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import chaos.alice.pro.ui.navigation.AppNavGraph
 import chaos.alice.pro.ui.navigation.Routes
-import kotlinx.coroutines.flow.firstOrNull
-import chaos.alice.pro.data.local.SettingsRepository
 import kotlinx.coroutines.flow.first
-
-// Определим состояние загрузки
-private sealed interface TokenState {
-    object Loading : TokenState
-    data class Loaded(val token: String?) : TokenState
-}
 
 private data class InitialState(
     val isLoading: Boolean = true,
-    val disclaimersShown: Boolean = false,
-    val tokenExists: Boolean = false
+    val disclaimersShown: Boolean = false
 )
 
 @Composable
 fun MainApp(
     viewModel: MainAppViewModel = hiltViewModel()
 ) {
-    // Загружаем все необходимые для старта данные
     val initialState by produceState(initialValue = InitialState()) {
         val disclaimersShown = viewModel.settingsRepository.haveDisclaimersBeenShown.first()
-        val token = viewModel.tokenManager.getToken().first()
         value = InitialState(
             isLoading = false,
-            disclaimersShown = disclaimersShown,
-            tokenExists = !token.isNullOrBlank()
+            disclaimersShown = disclaimersShown
         )
     }
 
@@ -47,11 +35,10 @@ fun MainApp(
             CircularProgressIndicator()
         }
     } else {
-        // Определяем, какой экран будет первым в графе навигации
-        val startDestination = when {
-            !initialState.disclaimersShown -> Routes.DISCLAIMER
-            !initialState.tokenExists -> Routes.TOKEN_ENTRY
-            else -> Routes.CHAT_LIST
+        val startDestination = if (!initialState.disclaimersShown) {
+            Routes.DISCLAIMER
+        } else {
+            Routes.CHAT_LIST
         }
         AppNavGraph(startDestination = startDestination)
     }

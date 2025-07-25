@@ -11,5 +11,5 @@ data class Persona(
     val icon_url: String,
     val description: String,
     val prompt_url: String,
-    var prompt: String? = null // Сюда будем кешировать загруженный текст промпта
+    var prompt: String? = null
 )

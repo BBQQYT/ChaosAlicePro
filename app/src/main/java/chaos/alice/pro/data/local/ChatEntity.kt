@@ -7,6 +7,6 @@ import androidx.room.PrimaryKey
 data class ChatEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
-    val personaId: String, // ID персонажа из JSON
+    val personaId: String,
     val createdAt: Long = System.currentTimeMillis()
 )
