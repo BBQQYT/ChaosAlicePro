@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 
@@ -52,7 +53,7 @@ fun SettingsScreen(
         }
     ) { paddingValues ->
         if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
@@ -67,7 +68,11 @@ fun SettingsScreen(
                 Text("Настройки API", style = MaterialTheme.typography.titleLarge)
                 ApiSettingsSection(uiState, viewModel)
 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    thickness = DividerDefaults.Thickness,
+                    color = DividerDefaults.color
+                )
 
                 ProxySettingsSection(uiState, viewModel)
 
@@ -121,7 +126,6 @@ private fun ProxyCheckStatusIndicator(status: ProxyCheckStatus) {
     ) {
         when (status) {
             ProxyCheckStatus.IDLE -> {
-                // Ничего не показываем
             }
             ProxyCheckStatus.CHECKING -> {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))

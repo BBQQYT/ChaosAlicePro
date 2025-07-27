@@ -11,15 +11,15 @@ data class SettingsUiState(
     val openAiApiKey: String = "",
     val openRouterApiKey: String = "",
     val modelName: String = "",
-    val availableProviders: List<ApiProvider> = ApiProvider.values().toList(),
+    val availableProviders: List<ApiProvider> = ApiProvider.entries,
     val availableModelsForProvider: List<String> = emptyList(),
 
     val proxyType: Proxy.Type = Proxy.Type.DIRECT,
     val proxyHost: String = "",
     val proxyPort: String = "",
-    val proxyUser: String = "", // <-- Новое поле
-    val proxyPass: String = "", // <-- Новое поле
-    val availableProxyTypes: List<Proxy.Type> = Proxy.Type.values().toList(),
+    val proxyUser: String = "",
+    val proxyPass: String = "",
+    val availableProxyTypes: List<Proxy.Type> = Proxy.Type.entries,
 
     val isLoading: Boolean = true,
     val isProxySettingsExpanded: Boolean = false
