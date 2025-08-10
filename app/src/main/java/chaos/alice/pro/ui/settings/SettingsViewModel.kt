@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import chaos.alice.pro.data.TokenManager
 import chaos.alice.pro.data.local.SettingsRepository
 import chaos.alice.pro.data.models.ApiProvider
+import chaos.alice.pro.data.models.AppTheme
+import chaos.alice.pro.data.models.ResponseLength
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -117,7 +119,9 @@ class SettingsViewModel @Inject constructor(
                 tokenManager.getOpenAiKey(),
                 tokenManager.getOpenRouterKey(),
                 settingsRepository.getModelName(),
-                settingsRepository.proxySettings
+                settingsRepository.proxySettings,
+                settingsRepository.responseLength,
+                settingsRepository.appTheme
             ) { values ->
                 val activeProvider = values[0] as ApiProvider
                 val geminiKey = values[1] as? String
@@ -125,6 +129,8 @@ class SettingsViewModel @Inject constructor(
                 val openRouterKey = values[3] as? String
                 val modelName = values[4] as? String
                 val proxySettings = values[5] as SettingsRepository.ProxySettings
+                val responseLength = values[6] as ResponseLength
+                val appTheme = values[7] as AppTheme
 
                 val availableModels = ModelDatabase.models[activeProvider] ?: emptyList()
 
@@ -135,12 +141,15 @@ class SettingsViewModel @Inject constructor(
                     openRouterApiKey = openRouterKey ?: "",
                     modelName = modelName.takeIf { !it.isNullOrBlank() } ?: availableModels.firstOrNull() ?: "",
                     availableModelsForProvider = availableModels,
+                    responseLength = responseLength,
+                    appTheme = appTheme,
                     proxyType = proxySettings.type,
                     proxyHost = proxySettings.host ?: "",
                     proxyPort = proxySettings.port?.toString() ?: "",
-                    proxyUser = proxySettings.user ?: "", // <-- Новое
-                    proxyPass = proxySettings.pass ?: "", // <-- Новое
-                    isLoading = false
+                    proxyUser = proxySettings.user ?: "",
+                    proxyPass = proxySettings.pass ?: "",
+                    isLoading = false,
+                    hasUnsavedChanges = false // Начальное состояние всегда false
                 )
             }.collect { newState ->
                 _uiState.value = newState
@@ -177,26 +186,34 @@ class SettingsViewModel @Inject constructor(
             it.copy(
                 activeProvider = provider,
                 modelName = availableModels.firstOrNull() ?: "",
-                availableModelsForProvider = availableModels
+                availableModelsForProvider = availableModels,
+                hasUnsavedChanges = true
             )
         }
+    }
+
+    fun onAppThemeChanged(theme: AppTheme) {
+        _uiState.update { it.copy(appTheme = theme, hasUnsavedChanges = true) }
+    }
+
+    fun onResponseLengthChanged(length: ResponseLength) {
+        _uiState.update { it.copy(responseLength = length, hasUnsavedChanges = true) }
     }
 
     fun onProxySettingsToggled() {
         _uiState.update { it.copy(isProxySettingsExpanded = !it.isProxySettingsExpanded) }
     }
 
-    fun onGeminiKeyChanged(key: String) { _uiState.update { it.copy(geminiApiKey = key) } }
-    fun onOpenAiKeyChanged(key: String) { _uiState.update { it.copy(openAiApiKey = key) } }
-    fun onOpenRouterKeyChanged(key: String) { _uiState.update { it.copy(openRouterApiKey = key) } }
-    fun onModelNameChanged(newName: String) { _uiState.update { it.copy(modelName = newName) } }
+    fun onGeminiKeyChanged(key: String) { _uiState.update { it.copy(geminiApiKey = key, hasUnsavedChanges = true) } }
+    fun onOpenAiKeyChanged(key: String) { _uiState.update { it.copy(openAiApiKey = key, hasUnsavedChanges = true) } }
+    fun onOpenRouterKeyChanged(key: String) { _uiState.update { it.copy(openRouterApiKey = key, hasUnsavedChanges = true) } }
+    fun onModelNameChanged(newName: String) { _uiState.update { it.copy(modelName = newName, hasUnsavedChanges = true) } }
 
-    fun onProxyTypeChanged(type: Proxy.Type) { _uiState.update { it.copy(proxyType = type, proxyCheckStatus = ProxyCheckStatus.IDLE) } }
-    fun onProxyHostChanged(host: String) { _uiState.update { it.copy(proxyHost = host, proxyCheckStatus = ProxyCheckStatus.IDLE) } }
-    fun onProxyPortChanged(port: String) { _uiState.update { it.copy(proxyPort = port.filter { c -> c.isDigit() }, proxyCheckStatus = ProxyCheckStatus.IDLE) } }
-    fun onProxyUserChanged(user: String) { _uiState.update { it.copy(proxyUser = user, proxyCheckStatus = ProxyCheckStatus.IDLE) } }
-    fun onProxyPassChanged(pass: String) { _uiState.update { it.copy(proxyPass = pass, proxyCheckStatus = ProxyCheckStatus.IDLE) } }
-
+    fun onProxyTypeChanged(type: Proxy.Type) { _uiState.update { it.copy(proxyType = type, proxyCheckStatus = ProxyCheckStatus.IDLE, hasUnsavedChanges = true) } }
+    fun onProxyHostChanged(host: String) { _uiState.update { it.copy(proxyHost = host, proxyCheckStatus = ProxyCheckStatus.IDLE, hasUnsavedChanges = true) } }
+    fun onProxyPortChanged(port: String) { _uiState.update { it.copy(proxyPort = port.filter { c -> c.isDigit() }, proxyCheckStatus = ProxyCheckStatus.IDLE, hasUnsavedChanges = true) } }
+    fun onProxyUserChanged(user: String) { _uiState.update { it.copy(proxyUser = user, proxyCheckStatus = ProxyCheckStatus.IDLE, hasUnsavedChanges = true) } }
+    fun onProxyPassChanged(pass: String) { _uiState.update { it.copy(proxyPass = pass, proxyCheckStatus = ProxyCheckStatus.IDLE, hasUnsavedChanges = true) } }
 
     fun saveSettings() {
         viewModelScope.launch {
@@ -209,6 +226,8 @@ class SettingsViewModel @Inject constructor(
                 openRouterKey = currentState.openRouterApiKey
             )
             settingsRepository.saveModelName(currentState.modelName)
+            settingsRepository.saveResponseLength(currentState.responseLength)
+            settingsRepository.saveAppTheme(currentState.appTheme)
 
             val proxySettings = SettingsRepository.ProxySettings(
                 type = currentState.proxyType,
@@ -218,6 +237,9 @@ class SettingsViewModel @Inject constructor(
                 pass = currentState.proxyPass.takeIf { it.isNotBlank() }
             )
             settingsRepository.saveProxySettings(proxySettings)
+
+            // Сбрасываем флаг после сохранения
+            _uiState.update { it.copy(hasUnsavedChanges = false) }
         }
     }
 }

@@ -9,6 +9,7 @@ import chaos.alice.pro.data.network.Persona
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -67,6 +68,8 @@ class ChatListViewModel @Inject constructor(
     fun onDismissDeleteDialog() {
         _uiState.update { it.copy(chatToDelete = null) }
     }
+
+    // ----- ИЗМЕНЕННАЯ ФУНКЦИЯ -----
     fun onPersonaSelected(personaId: String, onChatCreated: (Long) -> Unit) {
         viewModelScope.launch {
             val newChat = ChatEntity(
@@ -74,6 +77,7 @@ class ChatListViewModel @Inject constructor(
                 personaId = personaId
             )
             val newChatId = chatRepository.createNewChat(newChat)
+            // Закрываем диалог и вызываем коллбэк с ID нового чата
             _uiState.update { it.copy(showPersonaDialog = false) }
             onChatCreated(newChatId)
         }

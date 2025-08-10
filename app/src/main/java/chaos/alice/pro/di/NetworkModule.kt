@@ -45,6 +45,8 @@ object NetworkModule {
         return runBlocking { settingsRepository.proxySettings.first() }
     }
 
+    
+    // Не работает и будет вырезан скоро
     @Provides
     fun provideProxy(settingsRepository: SettingsRepository): Proxy? {
         return try {
@@ -114,7 +116,7 @@ object NetworkModule {
     @ProxyClient
     fun provideRetrofitWithProxy(json: Json, @ProxyClient okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://placeholder.com/") // Заглушка
+            .baseUrl("https://placeholder.com/") 
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

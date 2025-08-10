@@ -12,6 +12,8 @@ import javax.inject.Singleton
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import java.net.Proxy
+import chaos.alice.pro.data.models.ResponseLength
+import chaos.alice.pro.data.models.AppTheme
 
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
@@ -24,6 +26,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private val PROXY_PASSWORD_KEY = stringPreferencesKey("proxy_password")
 
     private val MODEL_NAME_KEY = stringPreferencesKey("model_name")
+    private val RESPONSE_LENGTH_KEY = stringPreferencesKey("response_length")
+    private val APP_THEME_KEY = stringPreferencesKey("app_theme")
 
     data class ProxySettings(
         val type: Proxy.Type = Proxy.Type.DIRECT,
@@ -48,6 +52,24 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         )
     }
 
+    val appTheme: Flow<AppTheme> = context.settingsDataStore.data.map { preferences ->
+        val themeName = preferences[APP_THEME_KEY] ?: AppTheme.DEFAULT.name
+        try {
+            AppTheme.valueOf(themeName)
+        } catch (e: IllegalArgumentException) {
+            AppTheme.DEFAULT
+        }
+    }
+
+    val responseLength: Flow<ResponseLength> = context.settingsDataStore.data.map { preferences ->
+        val lengthName = preferences[RESPONSE_LENGTH_KEY] ?: ResponseLength.AUTO.name
+        try {
+            ResponseLength.valueOf(lengthName)
+        } catch (e: IllegalArgumentException) {
+            ResponseLength.AUTO
+        }
+    }
+
     val haveDisclaimersBeenShown: Flow<Boolean> = context.settingsDataStore.data.map { preferences ->
         preferences[DISCLAIMERS_SHOWN_KEY] ?: false
     }
@@ -55,6 +77,18 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     fun getModelName(): Flow<String?> {
         return context.settingsDataStore.data.map { preferences ->
             preferences[MODEL_NAME_KEY]
+        }
+    }
+
+    suspend fun saveAppTheme(theme: AppTheme) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[APP_THEME_KEY] = theme.name
+        }
+    }
+
+    suspend fun saveResponseLength(length: ResponseLength) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[RESPONSE_LENGTH_KEY] = length.name
         }
     }
 

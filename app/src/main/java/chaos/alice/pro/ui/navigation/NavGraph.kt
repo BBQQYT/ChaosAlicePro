@@ -10,6 +10,7 @@ import chaos.alice.pro.ui.chat.ChatScreen
 import chaos.alice.pro.ui.chatlist.ChatListScreen
 import chaos.alice.pro.ui.settings.SettingsScreen
 import chaos.alice.pro.ui.disclaimer.DisclaimerFlowScreen
+import chaos.alice.pro.ui.theme.theming.ThemeConfig
 
 object Routes {
     const val DISCLAIMER = "disclaimer"
@@ -23,7 +24,7 @@ object Routes {
 }
 
 @Composable
-fun AppNavGraph(startDestination: String) {
+fun AppNavGraph(startDestination: String, themeConfig: ThemeConfig) {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = startDestination) {
@@ -36,7 +37,7 @@ fun AppNavGraph(startDestination: String) {
         }
 
         composable(Routes.CHAT_LIST) {
-            ChatListScreen(
+            themeConfig.chatListScreen(
                 onChatClicked = { chatId ->
                     navController.navigate(Routes.chat(chatId))
                 },
@@ -52,7 +53,7 @@ fun AppNavGraph(startDestination: String) {
             route = Routes.CHAT,
             arguments = listOf(navArgument("chatId") { type = NavType.LongType })
         ) {
-            ChatScreen(navController = navController)
+            themeConfig.chatScreen(navController = navController)
         }
     }
 }

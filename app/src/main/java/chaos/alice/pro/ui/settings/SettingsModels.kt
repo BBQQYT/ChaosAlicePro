@@ -2,6 +2,8 @@ package chaos.alice.pro.ui.settings
 
 import chaos.alice.pro.data.models.ApiProvider
 import java.net.Proxy
+import chaos.alice.pro.data.models.ResponseLength
+import chaos.alice.pro.data.models.AppTheme
 
 data class SettingsUiState(
 
@@ -13,6 +15,8 @@ data class SettingsUiState(
     val modelName: String = "",
     val availableProviders: List<ApiProvider> = ApiProvider.entries,
     val availableModelsForProvider: List<String> = emptyList(),
+    val responseLength: ResponseLength = ResponseLength.AUTO,
+    val appTheme: AppTheme = AppTheme.DEFAULT,
 
     val proxyType: Proxy.Type = Proxy.Type.DIRECT,
     val proxyHost: String = "",
@@ -22,7 +26,8 @@ data class SettingsUiState(
     val availableProxyTypes: List<Proxy.Type> = Proxy.Type.entries,
 
     val isLoading: Boolean = true,
-    val isProxySettingsExpanded: Boolean = false
+    val isProxySettingsExpanded: Boolean = false,
+    val hasUnsavedChanges: Boolean = false
 
 
 )

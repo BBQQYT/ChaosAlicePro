@@ -8,7 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -54,12 +53,15 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(
-    navController: NavController,
-    viewModel: ChatViewModel = hiltViewModel()
+    viewModel: ChatViewModel,
+    navController: NavController? = null,
+    showTopBar: Boolean = true
 ) {
+    val viewModel: ChatViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
 
     LaunchedEffect(uiState.messages.size) {
         if (uiState.messages.isNotEmpty()) {
@@ -71,32 +73,37 @@ fun ChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = uiState.chatTitle,
-                        modifier = Modifier.combinedClickable(
-                            onClick = {},
-                            onLongClick = { viewModel.onRenameRequest() }
+            
+            if (showTopBar) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = uiState.chatTitle,
+                            modifier = Modifier.combinedClickable(
+                                onClick = {},
+                                onLongClick = { viewModel.onRenameRequest() }
+                            )
                         )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад")
+                    },
+                    navigationIcon = {
+                        if (navController != null) {
+                            IconButton(onClick = { navController.navigateUp() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад")
+                            }
+                        }
+                    },
+                    actions = {
+                        uiState.currentPersona?.let { persona ->
+                            AsyncImage(
+                                model = persona.icon_url,
+                                contentDescription = persona.name,
+                                modifier = Modifier.padding(end = 8.dp).size(40.dp).clip(CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
-                },
-                actions = {
-                    uiState.currentPersona?.let { persona ->
-                        AsyncImage(
-                            model = persona.icon_url,
-                            contentDescription = persona.name,
-                            modifier = Modifier.padding(end = 8.dp).size(40.dp).clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
-            )
+                )
+            }
         },
         bottomBar = {
             MessageInput(

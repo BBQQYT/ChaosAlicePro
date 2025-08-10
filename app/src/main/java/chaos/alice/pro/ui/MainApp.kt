@@ -12,10 +12,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import chaos.alice.pro.ui.navigation.AppNavGraph
 import chaos.alice.pro.ui.navigation.Routes
 import kotlinx.coroutines.flow.first
+import chaos.alice.pro.data.models.AppTheme
+import chaos.alice.pro.ui.theme.theming.ThemeManager
+import chaos.alice.pro.ui.theme.ChaosAliceProTheme
 
 private data class InitialState(
     val isLoading: Boolean = true,
-    val disclaimersShown: Boolean = false
+    val disclaimersShown: Boolean = false,
+    val appTheme: AppTheme = AppTheme.DEFAULT
 )
 
 @Composable
@@ -24,22 +28,28 @@ fun MainApp(
 ) {
     val initialState by produceState(initialValue = InitialState()) {
         val disclaimersShown = viewModel.settingsRepository.haveDisclaimersBeenShown.first()
+        val appTheme = viewModel.settingsRepository.appTheme.first()
         value = InitialState(
             isLoading = false,
-            disclaimersShown = disclaimersShown
+            disclaimersShown = disclaimersShown,
+            appTheme = appTheme
+
         )
     }
 
-    if (initialState.isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else {
-        val startDestination = if (!initialState.disclaimersShown) {
-            Routes.DISCLAIMER
+    ChaosAliceProTheme(appTheme = initialState.appTheme) {
+        if (initialState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
         } else {
-            Routes.CHAT_LIST
+            val startDestination = if (!initialState.disclaimersShown) {
+                Routes.DISCLAIMER
+            } else {
+                Routes.CHAT_LIST
+            }
+            val themeConfig = ThemeManager.getThemeConfig(initialState.appTheme)
+            AppNavGraph(startDestination = startDestination, themeConfig = themeConfig)
         }
-        AppNavGraph(startDestination = startDestination)
     }
 }

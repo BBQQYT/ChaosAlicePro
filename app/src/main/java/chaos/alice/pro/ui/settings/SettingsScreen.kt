@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.ui.graphics.Color
+import chaos.alice.pro.data.models.ResponseLength
 import androidx.compose.ui.text.font.FontWeight
+import chaos.alice.pro.data.models.AppTheme
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,25 +76,7 @@ fun SettingsScreen(
                     color = DividerDefaults.color
                 )
 
-                ProxySettingsSection(uiState, viewModel)
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    OutlinedButton(
-                        onClick = { viewModel.checkProxyConnection() },
-                        enabled = uiState.proxyType != Proxy.Type.DIRECT
-                    ) {
-                        Text("Проверить соединение")
-                    }
-
-                    ProxyCheckStatusIndicator(status = uiState.proxyCheckStatus)
-                }
-
-
+                ThemeSettingsSection(uiState, viewModel)
 
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -100,11 +84,11 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         viewModel.saveSettings()
-                        Toast.makeText(context, "Настройки сохранены. Некоторые изменения (прокси) требуют перезапуска.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Настройки сохранены. Изменения темы требуют перезапуска.", Toast.LENGTH_LONG).show()
                         navController.navigateUp()
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = uiState.modelName.isNotBlank() && when (uiState.activeProvider) {
+                    enabled = uiState.hasUnsavedChanges && uiState.modelName.isNotBlank() && when (uiState.activeProvider) {
                         ApiProvider.GEMINI -> uiState.geminiApiKey.isNotBlank()
                         ApiProvider.OPEN_AI -> uiState.openAiApiKey.isNotBlank()
                         ApiProvider.OPEN_ROUTER -> uiState.openRouterApiKey.isNotBlank()
@@ -117,26 +101,38 @@ fun SettingsScreen(
     }
 }
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProxyCheckStatusIndicator(status: ProxyCheckStatus) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        when (status) {
-            ProxyCheckStatus.IDLE -> {
-            }
-            ProxyCheckStatus.CHECKING -> {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            }
-            ProxyCheckStatus.SUCCESS -> {
-                Icon(Icons.Default.CheckCircle, "Успех", tint = Color.Green)
-                Text("Успех", color = Color.Green, fontWeight = FontWeight.Bold)
-            }
-            ProxyCheckStatus.FAILURE -> {
-                Icon(Icons.Default.Error, "Ошибка", tint = MaterialTheme.colorScheme.error)
-                Text("Ошибка", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+private fun ThemeSettingsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
+    var isThemeDropdownExpanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Настройки интерфейса", style = MaterialTheme.typography.titleLarge)
+        Text("Тема приложения", style = MaterialTheme.typography.titleMedium)
+        ExposedDropdownMenuBox(
+            expanded = isThemeDropdownExpanded,
+            onExpandedChange = { isThemeDropdownExpanded = !isThemeDropdownExpanded }
+        ) {
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                readOnly = true,
+                value = uiState.appTheme.displayName,
+                onValueChange = {},
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isThemeDropdownExpanded) }
+            )
+            ExposedDropdownMenu(
+                expanded = isThemeDropdownExpanded,
+                onDismissRequest = { isThemeDropdownExpanded = false }
+            ) {
+                AppTheme.entries.forEach { theme ->
+                    DropdownMenuItem(
+                        text = { Text(theme.displayName) },
+                        onClick = {
+                            viewModel.onAppThemeChanged(theme)
+                            isThemeDropdownExpanded = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -176,6 +172,8 @@ private fun ApiSettingsSection(uiState: SettingsUiState, viewModel: SettingsView
                 }
             }
         }
+
+
 
         OutlinedTextField(
             value = uiState.geminiApiKey,
@@ -233,6 +231,22 @@ private fun ApiSettingsSection(uiState: SettingsUiState, viewModel: SettingsView
                             isModelDropdownExpanded = false
                         }
                     )
+                }
+            }
+        }
+
+        Text("Длина ответа", style = MaterialTheme.typography.titleMedium)
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            ResponseLength.entries.forEach { length ->
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(
+                        index = length.ordinal,
+                        count = ResponseLength.entries.size
+                    ),
+                    onClick = { viewModel.onResponseLengthChanged(length) },
+                    selected = uiState.responseLength == length
+                ) {
+                    Text(length.displayName)
                 }
             }
         }

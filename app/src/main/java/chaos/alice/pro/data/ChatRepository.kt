@@ -14,6 +14,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import chaos.alice.pro.data.TokenManager
 import chaos.alice.pro.data.network.llm.GeminiLlmProvider
+import chaos.alice.pro.data.models.ResponseLength
 
 @Singleton
 class ChatRepository @Inject constructor(
@@ -80,6 +81,15 @@ class ChatRepository @Inject constructor(
             val modelName = settingsRepository.getModelName().first()
             val history = historyWithUserMessage.dropLast(1)
 
+            val responseLength = settingsRepository.responseLength.first()
+            val baseSystemPrompt = persona?.prompt ?: ""
+            val lengthInstruction = when(responseLength) {
+                ResponseLength.AUTO -> "\n\nТвой ответ должен адаптироваться по длине к сообщениям пользователя. Если сообщение пользователя короткое, отвечай кратко. Если длинное - отвечай развернуто."
+                ResponseLength.SHORT -> "\n\nТвои ответы должны быть короткими и лаконичными."
+                ResponseLength.LONG -> "\n\nТвои ответы должны быть максимально длинными, подробными и развернутыми."
+            }
+            val finalSystemPrompt = baseSystemPrompt + lengthInstruction
+
             val apiKey = when (activeProvider) {
                 ApiProvider.GEMINI -> tokenManager.getGeminiKey().first()
                 ApiProvider.OPEN_AI -> tokenManager.getOpenAiKey().first()
@@ -93,7 +103,7 @@ class ChatRepository @Inject constructor(
 
             val responseFlow = llmProvider.generateResponseStream(
                 apiKey = apiKey,
-                systemPrompt = persona?.prompt,
+                systemPrompt = finalSystemPrompt,
                 history = history,
                 userMessage = userMessage
             )
