@@ -38,20 +38,28 @@ class GeminiLlmProvider @Inject constructor(
 
         val fullHistory = buildList {
             history.forEach { message ->
-                if (message.imageUri == null) {
-                    add(content(if (message.sender == Sender.USER) "user" else "model") { text(message.text) })
-                }
-            }
-            add(content("user") {
-                userMessage.imageUri?.let {
-                    try {
-                        image(it.toUri().toBitmap(context))
-                    } catch (e: Exception) {
-                        Log.e("GeminiProvider", "Image Load Error", e)
+                when {
+                    message.imageUri == null -> {
+                        add(content(if (message.sender == Sender.USER) "user" else "model") {
+                            text(message.text)
+                        })
+                    }
+                    message.sender == Sender.USER -> {
+                        add(content("user") {
+                            try {
+                                message.imageUri?.let { image(it.toUri().toBitmap(context)) }
+                            } catch (e: Exception) {
+                                Log.e("GeminiProvider", "History image load error", e)
+                            }
+                            text(message.text)
+                        })
+                    }
+                    else -> {
+                        // Model messages не могут содержать изображения в Gemini API
+                        add(content("model") { text(message.text) })
                     }
                 }
-                text(userMessage.text)
-            })
+            }
         }
 
         return model.generateContentStream(*fullHistory.toTypedArray())

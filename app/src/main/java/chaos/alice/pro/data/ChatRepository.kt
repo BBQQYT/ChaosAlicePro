@@ -120,7 +120,9 @@ class ChatRepository @Inject constructor(
             }
 
         } catch (e: Exception) {
-            Log.e("ChatRepository", "Error sending message (stream)", e)
+            Log.e("ChatRepository", "Error sending message (stream): ${e.message}")
+            Log.e("ChatRepository", "Stack trace:", e)
+            e.printStackTrace()
             val errorMessage = "Ошибка: ${e.message}"
             chatDao.getMessageById(modelMessageId)?.let {
                 chatDao.updateMessage(
