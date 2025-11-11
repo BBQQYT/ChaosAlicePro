@@ -80,7 +80,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
-    implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("com.google.dagger:hilt-android:2.57.2")
     kapt("com.google.dagger:hilt-compiler:2.57.2")
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
