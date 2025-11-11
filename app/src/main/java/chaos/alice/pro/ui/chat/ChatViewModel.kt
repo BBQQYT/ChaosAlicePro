@@ -113,11 +113,10 @@ class ChatViewModel @Inject constructor(
         generationJob = viewModelScope.launch {
             val userMessage = MessageEntity(
                 chatId = currentChatId,
-                text = text, // <--- Добавляем текст сообщения
-                sender = Sender.USER, // <--- Указываем отправителя (предполагая, что это пользователь)
-                timestamp = System.currentTimeMillis(), // <--- Добавляем текущее время
-                // возможно, здесь также нужно будет обработать imageUri, если MessageEntity его поддерживает
-                // imageUrl = imageUri?.toString() // Пример
+                text = text,
+                sender = Sender.USER,
+                timestamp = System.currentTimeMillis(),
+                imageUri = imageUri?.toString() // ← ДОБАВЬТЕ ЭТУ СТРОКУ
             )
             repository.insertUserMessage(userMessage)
             _uiState.update { it.copy(isLoading = true, selectedImageUri = null) }
