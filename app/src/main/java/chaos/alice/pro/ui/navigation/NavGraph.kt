@@ -38,10 +38,10 @@ fun AppNavGraph(startDestination: String, themeConfig: ThemeConfig) {
 
         composable(Routes.CHAT_LIST) {
             themeConfig.chatListScreen(
-                onChatClicked = { chatId ->
+                { chatId ->
                     navController.navigate(Routes.chat(chatId))
                 },
-                onSettingsClicked = {
+                {
                     navController.navigate(Routes.SETTINGS)
                 }
             )
@@ -53,7 +53,7 @@ fun AppNavGraph(startDestination: String, themeConfig: ThemeConfig) {
             route = Routes.CHAT,
             arguments = listOf(navArgument("chatId") { type = NavType.LongType })
         ) {
-            themeConfig.chatScreen(navController = navController)
+            themeConfig.chatScreen(navController)
         }
     }
 }

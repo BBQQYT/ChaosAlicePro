@@ -43,7 +43,6 @@ class ChatViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val settingsRepository: SettingsRepository,
     @ApplicationContext private val context: Context,
-    // SavedStateHandle будет предоставлен Hilt автоматически из графа навигации
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -95,7 +94,17 @@ class ChatViewModel @Inject constructor(
     }
 
 
-    fun onImageSelected(uri: Uri?) { /* ... без изменений ... */ }
+    fun onImageSelected(uri: Uri?) {
+        if (uri != null) {
+            try {
+                val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+            } catch (e: SecurityException) {
+                Log.e("ChatViewModel", "Failed to take persistable URI permission", e)
+            }
+        }
+        _uiState.update { it.copy(selectedImageUri = uri) }
+    }
 
     fun sendMessage(text: String, imageUri: Uri?) {
         val currentChatId = chatId ?: return
@@ -121,9 +130,13 @@ class ChatViewModel @Inject constructor(
     }
 
 
-    fun stopGeneration() { /* ... без изменений ... */ }
-    fun onRenameRequest() { /* ... без изменений ... */ }
-    fun onRenameDialogDismiss() { /* ... без изменений ... */ }
+    fun stopGeneration() {
+        generationJob?.cancel()
+        generationJob = null
+        _uiState.update { it.copy(isLoading = false) }
+    }
+    fun onRenameRequest() { _uiState.update { it.copy(showRenameDialog = true) } }
+    fun onRenameDialogDismiss() { _uiState.update { it.copy(showRenameDialog = false) } }
     fun onRenameConfirm(newTitle: String) {
         val currentChatId = chatId ?: return
         if (newTitle.isNotBlank()) {
@@ -133,9 +146,17 @@ class ChatViewModel @Inject constructor(
         }
         onRenameDialogDismiss()
     }
-    fun onMessageLongPress(message: MessageEntity) { /* ... без изменений ... */ }
-    fun onEditRequest() { /* ... без изменений ... */ }
-    fun onDeleteRequest() { /* ... без изменений ... */ }
+    fun onMessageLongPress(message: MessageEntity) {
+        _uiState.update { it.copy(messageToAction = message) }
+    }
+
+    fun onEditRequest() {
+        _uiState.update { it.copy(showEditMessageDialog = true) }
+    }
+
+    fun onDeleteRequest() {
+        _uiState.update { it.copy(showDeleteMessageDialog = true) }
+    }
 
     fun onConfirmEdit(newText: String) {
         val currentChatId = chatId ?: return
@@ -157,6 +178,21 @@ class ChatViewModel @Inject constructor(
             dismissActionDialogs()
         }
     }
-    fun onConfirmDelete() { /* ... без изменений ... */ }
-    fun dismissActionDialogs() { /* ... без изменений ... */ }
+    fun onConfirmDelete() {
+        viewModelScope.launch {
+            _uiState.value.messageToAction?.let { message ->
+                repository.deleteMessage(message.id)
+            }
+            dismissActionDialogs()
+        }
+    }
+    fun dismissActionDialogs() {
+        _uiState.update {
+            it.copy(
+                messageToAction = null,
+                showEditMessageDialog = false,
+                showDeleteMessageDialog = false
+            )
+        }
+    }
 }
