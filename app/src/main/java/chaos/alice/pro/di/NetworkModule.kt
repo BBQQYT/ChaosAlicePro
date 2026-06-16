@@ -1,6 +1,7 @@
 package chaos.alice.pro.di
 
 import chaos.alice.pro.data.local.SettingsRepository
+import chaos.alice.pro.data.network.GithubMirrorFallbackInterceptor
 import chaos.alice.pro.data.network.PersonaApiService
 import chaos.alice.pro.data.network.llm.GenericLlmApiService
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -20,6 +21,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import java.net.InetSocketAddress
 import java.net.Proxy
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import okhttp3.Authenticator
 import okhttp3.Credentials
@@ -69,7 +71,12 @@ object NetworkModule {
     @ProxyClient
     fun provideOkHttpClientWithProxy(settings: SettingsRepository.ProxySettings): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-        val clientBuilder = OkHttpClient.Builder().addInterceptor(loggingInterceptor)
+        val clientBuilder = OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor(GithubMirrorFallbackInterceptor()) // ← фолбэк на зеркало
+            .connectTimeout(6, TimeUnit.SECONDS)               // ← быстрый отказ → быстрый фолбэк
+            .readTimeout(10, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
 
         if (settings.type != Proxy.Type.DIRECT && !settings.host.isNullOrBlank() && settings.port != null) {
             val proxy = Proxy(
@@ -96,7 +103,13 @@ object NetworkModule {
     @DirectClient
     fun provideOkHttpClientDirect(): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-        return OkHttpClient.Builder().addInterceptor(loggingInterceptor).build()
+        return OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .addInterceptor(GithubMirrorFallbackInterceptor()) // ← фолбэк на зеркало
+            .connectTimeout(6, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .callTimeout(20, TimeUnit.SECONDS)
+            .build()
     }
     @Provides
     @Singleton
@@ -135,7 +148,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun providePersonaApiService(@DirectClient retrofit: Retrofit): PersonaApiService {
+    fun providePersonaApiService(@ProxyClient retrofit: Retrofit): PersonaApiService {
         return retrofit.create(PersonaApiService::class.java)
     }
 

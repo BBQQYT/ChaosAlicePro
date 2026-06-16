@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Attachment
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mood
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
@@ -23,8 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
+import androidx.emoji2.emojipicker.EmojiPickerView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -54,7 +58,7 @@ fun TelegramChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            MediumTopAppBar(
                 title = { Text(uiState.chatTitle) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
@@ -66,7 +70,7 @@ fun TelegramChatScreen(
                         AsyncImage(
                             model = persona.icon_url,
                             contentDescription = persona.name,
-                            modifier = Modifier.padding(end = 8.dp).size(40.dp).clip(CircleShape)
+                            modifier = Modifier.padding(end = 8.dp).size(48.dp).clip(CircleShape)
                         )
                     }
                 }
@@ -219,6 +223,7 @@ fun TelegramMessageBubble(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TelegramMessageInput(
     onSendMessage: (String, Uri?) -> Unit,
@@ -229,6 +234,7 @@ fun TelegramMessageInput(
     onImageSelected: (Uri?) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
+    var showEmojiSheet by remember { mutableStateOf(false) }
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri: Uri? -> onImageSelected(uri) }
@@ -237,10 +243,27 @@ fun TelegramMessageInput(
     Surface(modifier = Modifier.fillMaxWidth(), shadowElevation = 4.dp) {
         Column {
             if (selectedImageUri != null) {
+                Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
+                    AsyncImage(
+                        model = selectedImageUri,
+                        contentDescription = "Выбранное изображение",
+                        modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    IconButton(
+                        onClick = { onImageSelected(null) },
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    ) {
+                        Icon(Icons.Default.Close, "Убрать изображение")
+                    }
+                }
             }
 
             Row(
-                modifier = Modifier.padding(vertical = 4.dp, horizontal = 8.dp),
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(vertical = 4.dp, horizontal = 8.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
                 TextField(
@@ -248,7 +271,7 @@ fun TelegramMessageInput(
                     onValueChange = { text = it },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Сообщение") },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = MaterialTheme.shapes.extraLarge,
                     colors = TextFieldDefaults.colors(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
@@ -256,7 +279,7 @@ fun TelegramMessageInput(
                     ),
                     enabled = !isLoading,
                     leadingIcon = {
-                        IconButton(onClick = { /* TODO: emoji picker */ }) {
+                        IconButton(onClick = { showEmojiSheet = true }) {
                             Icon(Icons.Default.Mood, contentDescription = "Эмодзи")
                         }
                     },
@@ -292,6 +315,22 @@ fun TelegramMessageInput(
                     } else {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Отправить")
                     }
+                }
+            }
+
+            if (showEmojiSheet) {
+                ModalBottomSheet(onDismissRequest = { showEmojiSheet = false }) {
+                    AndroidView(
+                        factory = { ctx ->
+                            EmojiPickerView(ctx).apply {
+                                setOnEmojiPickedListener { item -> text += item.emoji }
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(360.dp)
+                            .navigationBarsPadding()
+                    )
                 }
             }
         }

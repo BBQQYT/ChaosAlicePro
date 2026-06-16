@@ -86,7 +86,7 @@ fun ChatGPTContainerScreen(
         Scaffold(
             topBar = {
                 val chatUiState by chatViewModel.uiState.collectAsStateWithLifecycle()
-                TopAppBar(
+                MediumTopAppBar(
                     title = {
                         val title = if (selectedChatId != null) chatUiState.chatTitle else "Chaos Alice"
                         Text(text = title)
@@ -102,7 +102,7 @@ fun ChatGPTContainerScreen(
                                 AsyncImage(
                                     model = persona.icon_url,
                                     contentDescription = persona.name,
-                                    modifier = Modifier.padding(end = 8.dp).size(40.dp).clip(CircleShape),
+                                    modifier = Modifier.padding(end = 8.dp).size(48.dp).clip(CircleShape),
                                     contentScale = ContentScale.Crop
                                 )
                             }
@@ -132,7 +132,7 @@ fun ChatGPTContainerScreen(
     }
 
     if (chatListUiState.showPersonaDialog) {
-        PersonaSelectionDialog(
+        PersonaSelectionSheet(
             officialPersonas = chatListUiState.officialPersonas,
             customPersonas = chatListUiState.customPersonas,
             onDismiss = { chatListViewModel.onDialogDismiss() },

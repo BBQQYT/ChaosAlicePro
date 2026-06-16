@@ -14,16 +14,32 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import java.net.Proxy
 import chaos.alice.pro.data.models.ResponseLength
 import chaos.alice.pro.data.models.AppTheme
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 @Singleton
 class SettingsRepository @Inject constructor(@param:ApplicationContext private val context: Context) {
+
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val securePrefs = EncryptedSharedPreferences.create(
+        context,
+        "secure_settings",
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
 
     private val disclaimersShownKey = booleanPreferencesKey("disclaimers_shown")
     private val proxyTypeKey = stringPreferencesKey("proxy_type")
     private val proxyHostKey = stringPreferencesKey("proxy_host")
     private val proxyPortKey = intPreferencesKey("proxy_port")
-    private val proxyUserKey = stringPreferencesKey("proxy_user")
-    private val proxyPasswordKey = stringPreferencesKey("proxy_password")
+    
+    // Эти ключи теперь только для названия в SecurePrefs
+    private val proxyUserKey = "proxy_user"
+    private val proxyPasswordKey = "proxy_password"
 
     private val modelNameKey = stringPreferencesKey("model_name")
     private val responseLengthKey = stringPreferencesKey("response_length")
@@ -47,11 +63,13 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
             type = type,
             host = prefs[proxyHostKey],
             port = prefs[proxyPortKey],
-            user = prefs[proxyUserKey],
-            pass = prefs[proxyPasswordKey]
+            user = securePrefs.getString(proxyUserKey, null),
+            pass = securePrefs.getString(proxyPasswordKey, null)
         )
     }
-
+    
+    // ... остальной код (appTheme, responseLength и т.д.)
+    
     val appTheme: Flow<AppTheme> = context.settingsDataStore.data.map { preferences ->
         val themeName = preferences[appThemeKey] ?: AppTheme.DEFAULT.name
         try {
@@ -97,8 +115,11 @@ class SettingsRepository @Inject constructor(@param:ApplicationContext private v
             prefs[proxyTypeKey] = settings.type.name
             settings.host?.let { prefs[proxyHostKey] = it } ?: prefs.remove(proxyHostKey)
             settings.port?.let { prefs[proxyPortKey] = it } ?: prefs.remove(proxyPortKey)
-            settings.user?.let { prefs[proxyUserKey] = it } ?: prefs.remove(proxyUserKey)
-            settings.pass?.let { prefs[proxyPasswordKey] = it } ?: prefs.remove(proxyPasswordKey)
+        }
+        securePrefs.edit().apply {
+            putString(proxyUserKey, settings.user)
+            putString(proxyPasswordKey, settings.pass)
+            apply()
         }
     }
 

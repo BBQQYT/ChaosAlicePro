@@ -48,6 +48,18 @@ android {
     }
 }
 
+// generativeai 0.9.0 тянет транзитивный ktor-client-okhttp (Ktor 2.x), а явные
+// ktor-* поднимают ktor-client-core — версии расходятся и в рантайме падает
+// NoClassDefFoundError io.ktor.client.plugins.HttpTimeout. Жёстко выравниваем
+// ВСЕ модули io.ktor (включая транзитивные движки) на одной 2.x-версии.
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "io.ktor") {
+            useVersion("2.3.13")
+        }
+    }
+}
+
 dependencies {
     implementation(libs.logging.interceptor)
     implementation(libs.androidx.compose.material.icons.extended)
@@ -61,6 +73,7 @@ dependencies {
     implementation(libs.retrofit2.kotlinx.serialization.converter)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.coil.compose)
+    implementation(libs.androidx.emoji2.emojipicker)
     implementation(libs.androidx.core.ktx.v1120)
     implementation(libs.androidx.lifecycle.runtime.ktx.v270)
     implementation(libs.kotlinx.coroutines.android)

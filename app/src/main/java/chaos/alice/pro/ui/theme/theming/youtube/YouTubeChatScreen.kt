@@ -1,21 +1,29 @@
 package chaos.alice.pro.ui.theme.theming.youtube
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -39,15 +47,18 @@ fun YouTubeChatScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(uiState.chatTitle, style = MaterialTheme.typography.titleLarge) },
+            MediumTopAppBar(
+                title = { Text(uiState.chatTitle, style = MaterialTheme.typography.headlineSmall) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад")
                     }
                 }
             )
-        }
+        },
+        // Ввод сам обрабатывает нижние оконные отступы (навбар + клавиатура),
+        // поэтому не даём Scaffold добавить их повторно в paddingValues.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             LazyColumn(
@@ -59,7 +70,7 @@ fun YouTubeChatScreen(
                 item {
                     Text(
                         "Комментарии",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
@@ -70,34 +81,68 @@ fun YouTubeChatScreen(
                     }
                 ) { index, message ->
                     val isStreaming = uiState.isLoading && index == uiState.messages.lastIndex
-                    YouTubeCommentBubble(message, isStreaming)
+                    YouTubeCommentBubble(message, isStreaming, uiState.currentPersona?.icon_url)
                 }
             }
 
-            Surface(shadowElevation = 4.dp) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Surface(tonalElevation = 2.dp) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding()
                 ) {
                     var text by remember { mutableStateOf("") }
-                    TextField(
-                        value = text,
-                        onValueChange = { text = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Оставьте комментарий...") },
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                        )
+                    val imagePickerLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.GetContent(),
+                        onResult = { uri: Uri? -> viewModel.onImageSelected(uri) }
                     )
-                    IconButton(
-                        onClick = {
-                            viewModel.sendMessage(text, null)
-                            text = ""
-                        },
-                        enabled = text.isNotBlank() && !uiState.isLoading
+
+                    if (uiState.selectedImageUri != null) {
+                        Box(modifier = Modifier.padding(start = 16.dp, top = 8.dp)) {
+                            AsyncImage(
+                                model = uiState.selectedImageUri,
+                                contentDescription = "Выбранное изображение",
+                                modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            IconButton(onClick = { viewModel.onImageSelected(null) }) {
+                                Icon(Icons.Default.Close, "Убрать изображение")
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.Send, "Отправить")
+                        if (uiState.isImagePickerEnabled) {
+                            IconButton(onClick = { imagePickerLauncher.launch("image/*") }) {
+                                Icon(Icons.Default.AddPhotoAlternate, "Прикрепить фото")
+                            }
+                        }
+                        TextField(
+                            value = text,
+                            onValueChange = { text = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Оставьте комментарий...") },
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                            )
+                        )
+                        IconButton(
+                            onClick = {
+                                viewModel.sendMessage(text, uiState.selectedImageUri)
+                                text = ""
+                                viewModel.onImageSelected(null)
+                            },
+                            enabled = (text.isNotBlank() || uiState.selectedImageUri != null) && !uiState.isLoading
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Send, "Отправить")
+                        }
                     }
                 }
             }
@@ -108,12 +153,13 @@ fun YouTubeChatScreen(
 }
 
 @Composable
-fun YouTubeCommentBubble(message: MessageEntity, isStreaming: Boolean) {
+fun YouTubeCommentBubble(message: MessageEntity, isStreaming: Boolean, personaIconUrl: String?) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         if (message.sender == Sender.MODEL) {
             AsyncImage(
-                model = "https://yt3.googleusercontent.com/ytc/AIdro_k-3852uA1b-iCgc2h2I16b1MkP_8D5IDdeqTcS1g=s900-c-k-c0x00ffffff-no-rj",
+                model = personaIconUrl,
                 contentDescription = "Аватар Персонажа",
+                contentScale = ContentScale.Crop,
                 modifier = Modifier.size(40.dp).clip(CircleShape)
             )
         } else {
@@ -130,6 +176,18 @@ fun YouTubeCommentBubble(message: MessageEntity, isStreaming: Boolean) {
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            message.imageUri?.let { uriString ->
+                AsyncImage(
+                    model = uriString.toUri(),
+                    contentDescription = "Прикреплённое изображение",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .padding(vertical = 4.dp)
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+            }
             if (isStreaming) {
                 StreamingMessageContent(
                     text = message.text,

@@ -44,7 +44,7 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            MediumTopAppBar(
                 title = { Text("Настройки") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {

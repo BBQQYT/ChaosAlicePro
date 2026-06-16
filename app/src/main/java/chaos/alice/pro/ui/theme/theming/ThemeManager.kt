@@ -16,6 +16,8 @@ import chaos.alice.pro.ui.theme.theming.telegram.TelegramChatScreen
 import chaos.alice.pro.ui.theme.theming.youtube.YouTubeChatListScreen
 import chaos.alice.pro.ui.theme.theming.youtube.YouTubeChatScreen
 import chaos.alice.pro.ui.theme.theming.chatgpt.ChatGPTContainerScreen
+import chaos.alice.pro.ui.theme.theming.gingerbread.GingerbreadChatListScreen
+import chaos.alice.pro.ui.theme.theming.gingerbread.GingerbreadChatScreen
 
 data class ThemeConfig(
     val chatListScreen: @Composable (onChatClicked: (Long) -> Unit, onSettingsClicked: () -> Unit) -> Unit,
@@ -28,6 +30,7 @@ object ThemeManager {
             AppTheme.TELEGRAM -> telegramTheme
             AppTheme.CHAT_GPT -> chatGptTheme
             AppTheme.YOUTUBE -> youTubeTheme
+            AppTheme.LEGACY -> gingerbreadTheme
             else -> defaultTheme
         }
     }
@@ -49,7 +52,7 @@ private val telegramTheme = ThemeConfig(
         TelegramChatListScreen(onChatClicked = onChatClicked, onSettingsClicked = onSettingsClicked)
     },
     chatScreen = { navController ->
-        ChatScreen(viewModel = hiltViewModel(), navController = navController)
+        TelegramChatScreen(navController = navController, viewModel = hiltViewModel())
     }
 )
 
@@ -70,5 +73,14 @@ private val youTubeTheme = ThemeConfig(
     },
     chatScreen = { navController ->
         YouTubeChatScreen(navController)
+    }
+)
+
+private val gingerbreadTheme = ThemeConfig(
+    chatListScreen = { onChatClicked, onSettingsClicked ->
+        GingerbreadChatListScreen(onChatClicked = onChatClicked, onSettingsClicked = onSettingsClicked)
+    },
+    chatScreen = { navController ->
+        GingerbreadChatScreen(navController = navController)
     }
 )

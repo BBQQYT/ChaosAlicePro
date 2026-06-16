@@ -36,7 +36,7 @@ fun YouTubeChatListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            MediumTopAppBar(
                 title = { Text("Chaos Alice") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -83,7 +83,7 @@ fun YouTubeChatListScreen(
             }
 
             if (uiState.showPersonaDialog) {
-                PersonaSelectionDialog(
+                PersonaSelectionSheet(
                     officialPersonas = uiState.officialPersonas,
                     customPersonas = uiState.customPersonas,
                     onDismiss = { chatListViewModel.onDialogDismiss() },

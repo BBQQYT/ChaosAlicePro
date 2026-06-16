@@ -17,23 +17,27 @@ class PersonaRepository @Inject constructor(private val apiService: PersonaApiSe
 
     suspend fun getAllPersonas(): Pair<List<Persona>, List<Persona>> {
         return mutex.withLock {
-            if (cachedOfficialPersonas == null) {
-                cachedOfficialPersonas = try {
-                    apiService.getOfficialPersonas()
+            if (cachedOfficialPersonas == null || cachedOfficialPersonas!!.isEmpty()) {
+                try {
+                    val official = apiService.getOfficialPersonas()
+                    if (official.isNotEmpty()) {
+                        cachedOfficialPersonas = official
+                    }
                 } catch (e: Exception) {
                     Log.e("PersonaRepository", "Failed to load official personas", e)
-                    emptyList()
                 }
             }
-            if (cachedCustomPersonas == null) {
-                cachedCustomPersonas = try {
-                    apiService.getCustomPersonas()
+            if (cachedCustomPersonas == null || cachedCustomPersonas!!.isEmpty()) {
+                try {
+                    val custom = apiService.getCustomPersonas()
+                    if (custom.isNotEmpty()) {
+                        cachedCustomPersonas = custom
+                    }
                 } catch (e: Exception) {
                     Log.e("PersonaRepository", "Failed to load custom personas", e)
-                    emptyList()
                 }
             }
-            Pair(cachedOfficialPersonas!!, cachedCustomPersonas!!)
+            Pair(cachedOfficialPersonas ?: emptyList(), cachedCustomPersonas ?: emptyList())
         }
     }
 
@@ -45,7 +49,13 @@ class PersonaRepository @Inject constructor(private val apiService: PersonaApiSe
             if (it.prompt == null) {
                 mutex.withLock {
                     if (it.prompt == null) {
-                        it.prompt = apiService.getPrompt(it.prompt_url).string()
+                        try {
+                            it.prompt = apiService.getPrompt(it.prompt_url).string()
+                        } catch (e: Exception) {
+                            // Сеть могла отвалиться (VPN/DNS). Не роняем приложение —
+                            // prompt остаётся null и будет повторно загружен при следующем вызове.
+                            Log.e("PersonaRepository", "Failed to load prompt for ${it.id}", e)
+                        }
                     }
                 }
             }

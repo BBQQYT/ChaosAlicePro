@@ -29,8 +29,10 @@ import chaos.alice.pro.ui.chatlist.ChatListViewModel
 import chaos.alice.pro.ui.chatlist.ChatListUiState
 import chaos.alice.pro.ui.chatlist.ChatCardItem
 import chaos.alice.pro.ui.chatlist.DeleteConfirmDialog
-import chaos.alice.pro.ui.chatlist.PersonaSelectionDialog
+import chaos.alice.pro.ui.chatlist.PersonaSelectionSheet
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LargeFloatingActionButton
+import androidx.compose.material3.MediumTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +47,7 @@ fun TelegramChatListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            MediumTopAppBar(
                 title = { Text("Chaos Alice") },
                 actions = {
                     IconButton(onClick = onSettingsClicked) {
@@ -55,7 +57,7 @@ fun TelegramChatListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { chatListViewModel.onFabClicked() }) {
+            LargeFloatingActionButton(onClick = { chatListViewModel.onFabClicked() }) {
                 Icon(Icons.Default.Edit, contentDescription = "Новый чат")
             }
         }
@@ -86,7 +88,7 @@ fun TelegramChatListScreen(
             }
 
             if (uiState.showPersonaDialog) {
-                PersonaSelectionDialog(
+                PersonaSelectionSheet(
                     officialPersonas = uiState.officialPersonas,
                     customPersonas = uiState.customPersonas,
                     onDismiss = { chatListViewModel.onDialogDismiss() },

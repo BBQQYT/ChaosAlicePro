@@ -32,55 +32,36 @@ class SettingsViewModel @Inject constructor(
     private object ModelDatabase {
         val models: Map<ApiProvider, List<String>> = mapOf(
             ApiProvider.OPEN_ROUTER to listOf(
-                "qwen/qwen3-coder:free",
-                "qwen/qwen3-next-80b-a3b-instruct:free",
-                "openai/gpt-oss-120b:free",
-                "openai/gpt-oss-20b:free",
-                "nvidia/nemotron-3-ultra-550b-a55b:free",
-                "nvidia/nemotron-3-super-120b-a12b:free",
-                "nvidia/nemotron-3-nano-30b-a3b:free",
-                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-                "nvidia/nemotron-nano-12b-v2-vl:free",
-                "nvidia/nemotron-nano-9b-v2:free",
-                "nvidia/nemotron-3.5-content-safety:free",
-                "nex-agi/nex-n2-pro:free",
-                "nousresearch/hermes-3-llama-3.1-405b:free",
-                "google/gemma-4-31b-it:free",
-                "google/gemma-4-26b-a4b-it:free",
+                "google/gemini-2.0-flash-001",
+                "google/gemini-2.0-flash-lite-preview-02-05:free",
+                "deepseek/deepseek-r1:free",
+                "deepseek/deepseek-chat:free",
                 "meta-llama/llama-3.3-70b-instruct:free",
-                "meta-llama/llama-3.2-3b-instruct:free",
-                "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-                "poolside/laguna-m.1:free",
-                "poolside/laguna-xs.2:free",
-                "liquid/lfm-2.5-1.2b-thinking:free",
-                "liquid/lfm-2.5-1.2b-instruct:free"
+                "qwen/qwen-2.5-72b-instruct:free",
+                "qwen/qwen-turbo",
+                "mistralai/mistral-7b-instruct:free",
+                "nvidia/llama-3.1-nemotron-70b-instruct:free",
+                "microsoft/phi-3-medium-128k-instruct:free"
             ),
             ApiProvider.OPEN_AI to listOf(
-                "gpt-5.5",
-                "gpt-5.5-pro",
-                "gpt-5.4",
-                "gpt-5.4-mini",
-                "gpt-5.4-nano",
-                "gpt-5.3-codex",
-                "gpt-5.2",
-                "gpt-5.1",
-                "gpt-5",
-                "gpt-5-mini",
-                "gpt-5-nano",
-                "o3-pro",
-                "o3",
-                "gpt-4.1",
-                "gpt-4.1-mini",
-                "gpt-4o-mini"
+                "o3-mini",
+                "o1",
+                "o1-mini",
+                "o1-preview",
+                "gpt-4o",
+                "gpt-4o-mini",
+                "gpt-4-turbo",
+                "gpt-3.5-turbo"
             ),
             ApiProvider.GEMINI to listOf(
-                "gemini-3.5-flash",
                 "gemini-3.1-pro-preview",
-                "gemini-3.1-flash-lite",
-                "gemini-3-flash-preview",
+                "gemini-3.1-flash-preview",
+                "gemini-3.1-flash-lite-preview",
                 "gemini-2.5-pro",
                 "gemini-2.5-flash",
-                "gemini-2.5-flash-lite"
+                "gemini-2.5-flash-lite",
+                "gemini-1.5-pro",
+                "gemini-1.5-flash"
             )
         )
     }

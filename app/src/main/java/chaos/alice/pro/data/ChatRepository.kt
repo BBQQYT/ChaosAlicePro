@@ -56,21 +56,28 @@ class ChatRepository @Inject constructor(
     }
 
     suspend fun sendMessage(chatId: Long, userMessageText: String, userMessageImageUri: String?) {
-        // 1. Создаем "пустое" сообщение от модели, чтобы показать индикатор загрузки
+        // 1. Получаем все нужные настройки
+        val activeProvider = tokenManager.getActiveProvider().first()
+        val modelName = settingsRepository.getModelName().first() ?: when(activeProvider) {
+            ApiProvider.GEMINI -> "gemini-2.5-flash"
+            ApiProvider.OPEN_AI -> "gpt-4o-mini"
+            ApiProvider.OPEN_ROUTER -> "google/gemini-2.0-flash-001"
+        }
+
+        // 2. Создаем "пустое" сообщение от модели, чтобы показать индикатор загрузки
         val modelMessage = MessageEntity(
             chatId = chatId,
             text = "...",
             sender = Sender.MODEL,
-            timestamp = System.currentTimeMillis() + 1 // Убедимся, что оно всегда после сообщения юзера
+            timestamp = System.currentTimeMillis() + 1,
+            apiProvider = activeProvider,
+            modelName = modelName
         )
         val modelMessageId = chatDao.insertMessage(modelMessage)
 
         try {
-            // 2. Получаем все нужные настройки
             val chat = chatDao.getChatById(chatId) ?: throw Exception("Chat not found")
             val persona = personaRepository.getPersonaById(chat.personaId)
-            val activeProvider = tokenManager.getActiveProvider().first()
-            val modelName = settingsRepository.getModelName().first()
             val apiKey = when (activeProvider) {
                 ApiProvider.GEMINI -> tokenManager.getGeminiKey().first()
                 ApiProvider.OPEN_AI -> tokenManager.getOpenAiKey().first()
@@ -78,19 +85,18 @@ class ChatRepository @Inject constructor(
             } ?: throw IllegalStateException("API Key for provider ${activeProvider.displayName} not found!")
 
             // 3. Формируем историю, ИСКЛЮЧАЯ последнее сообщение пользователя, которое мы передадим отдельно
-            val history = chatDao.getMessagesForChat(chatId).first().dropLast(2)
+            val history = chatDao.getMessagesForChat(chatId).first().filter { it.id != modelMessageId }.dropLast(1)
 
-            // 4. Создаем объект сообщения пользователя "на лету" со всеми данными
+            // 4. Создаем объект сообщения пользователя
             val userMessage = MessageEntity(
                 chatId = chatId,
                 text = userMessageText,
                 imageUri = userMessageImageUri,
                 sender = Sender.USER,
-                timestamp = System.currentTimeMillis()
-            ).apply {
-                this.apiProvider = activeProvider
-                this.modelName = modelName
-            }
+                timestamp = System.currentTimeMillis(),
+                apiProvider = activeProvider,
+                modelName = modelName
+            )
 
             // 5. Формируем системный промпт
             val responseLength = settingsRepository.responseLength.first()
@@ -108,26 +114,33 @@ class ChatRepository @Inject constructor(
                 apiKey = apiKey,
                 systemPrompt = finalSystemPrompt,
                 history = history,
-                userMessage = userMessage // Передаем наше свежесозданное сообщение
+                userMessage = userMessage
             )
 
             // 7. Собираем ответ
             var accumulatedText = ""
+            var firstChunk = true
             responseFlow.collect { chunk ->
-                accumulatedText += chunk
+                if (firstChunk) {
+                    accumulatedText = chunk
+                    firstChunk = false
+                } else {
+                    accumulatedText += chunk
+                }
                 chatDao.updateMessageText(modelMessageId, accumulatedText)
             }
 
             // 8. Генерируем заголовок, если это начало чата
-            if (chatDao.getMessagesForChat(chatId).first().size <= 2) {
+            if (chatDao.getMessagesForChat(chatId).first().size <= 3) {
                 generateAndSetChatTitle(chatId)
             }
 
         } catch (e: Exception) {
             Log.e("ChatRepository", "Error sending message", e)
             val errorMessage = "Ошибка: ${e.message}"
+            chatDao.updateMessageText(modelMessageId, errorMessage)
             chatDao.getMessageById(modelMessageId)?.let {
-                chatDao.updateMessage(it.copy(text = errorMessage, isError = true))
+                chatDao.updateMessage(it.copy(isError = true))
             }
         }
     }
@@ -160,7 +173,7 @@ class ChatRepository @Inject constructor(
             titlePromptMessage.modelName = when(activeProvider) {
                 ApiProvider.GEMINI -> "gemini-2.5-flash-lite"
                 ApiProvider.OPEN_AI -> "gpt-4o-mini"
-                ApiProvider.OPEN_ROUTER -> "nvidia/nemotron-nano-12b-v2-vl:free" // Изменено на nvidia/nemotron-nano-12b-v2-vl:free
+                ApiProvider.OPEN_ROUTER -> "google/gemini-2.0-flash-lite-preview-02-05:free"
             }
 
             var titleResponse = ""

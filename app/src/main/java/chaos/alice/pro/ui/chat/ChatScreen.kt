@@ -74,7 +74,7 @@ fun ChatScreen(
         topBar = {
             
             if (showTopBar) {
-                TopAppBar(
+                MediumTopAppBar(
                     title = {
                         Text(
                             text = uiState.chatTitle,
@@ -96,7 +96,7 @@ fun ChatScreen(
                             AsyncImage(
                                 model = persona.icon_url,
                                 contentDescription = persona.name,
-                                modifier = Modifier.padding(end = 8.dp).size(40.dp).clip(CircleShape),
+                                modifier = Modifier.padding(end = 8.dp).size(48.dp).clip(CircleShape),
                                 contentScale = ContentScale.Crop
                             )
                         }
@@ -187,49 +187,51 @@ fun SimpleMarkdownText(
     val codeBlockBackgroundColor = MaterialTheme.colorScheme.surfaceVariant
     val markdownRegex = remember { Regex("""(\*\*.*?\*\*|\*.*?\*|`.*?`)""") }
 
-    val annotatedString = buildAnnotatedString {
-        var lastIndex = 0
-        markdownRegex.findAll(text).forEach { match ->
-            val startIndex = match.range.first
-            val matchedText = match.value
+    val annotatedString = remember(text, defaultColor, codeBlockBackgroundColor) {
+        buildAnnotatedString {
+            var lastIndex = 0
+            markdownRegex.findAll(text).forEach { match ->
+                val startIndex = match.range.first
+                val matchedText = match.value
 
-            if (startIndex > lastIndex) {
+                if (startIndex > lastIndex) {
+                    withStyle(style = SpanStyle(color = defaultColor)) {
+                        append(text.substring(lastIndex, startIndex))
+                    }
+                }
+
+                when {
+                    matchedText.startsWith("**") -> {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = defaultColor)) {
+                            append(matchedText.removeSurrounding("**"))
+                        }
+                    }
+
+                    matchedText.startsWith("*") -> {
+                        withStyle(style = SpanStyle(fontStyle = FontStyle.Italic, color = ItalicMessageColor)) {
+                            append(matchedText.removeSurrounding("*"))
+                        }
+                    }
+
+                    matchedText.startsWith("`") -> {
+                        withStyle(
+                            style = SpanStyle(
+                                fontFamily = FontFamily.Monospace,
+                                background = codeBlockBackgroundColor,
+                                color = defaultColor
+                            )
+                        ) {
+                            append(matchedText.removeSurrounding("`"))
+                        }
+                    }
+                }
+                lastIndex = match.range.last + 1
+            }
+
+            if (lastIndex < text.length) {
                 withStyle(style = SpanStyle(color = defaultColor)) {
-                    append(text.substring(lastIndex, startIndex))
+                    append(text.substring(lastIndex))
                 }
-            }
-
-            when {
-                matchedText.startsWith("**") -> {
-                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold, color = defaultColor)) {
-                        append(matchedText.removeSurrounding("**"))
-                    }
-                }
-
-                matchedText.startsWith("*") -> {
-                    withStyle(style = SpanStyle(fontStyle = FontStyle.Italic, color = ItalicMessageColor)) {
-                        append(matchedText.removeSurrounding("*"))
-                    }
-                }
-
-                matchedText.startsWith("`") -> {
-                    withStyle(
-                        style = SpanStyle(
-                            fontFamily = FontFamily.Monospace,
-                            background = codeBlockBackgroundColor,
-                            color = defaultColor
-                        )
-                    ) {
-                        append(matchedText.removeSurrounding("`"))
-                    }
-                }
-            }
-            lastIndex = match.range.last + 1
-        }
-
-        if (lastIndex < text.length) {
-            withStyle(style = SpanStyle(color = defaultColor)) {
-                append(text.substring(lastIndex))
             }
         }
     }
@@ -249,6 +251,11 @@ fun MessageBubble(
 ) {
     val isUser = message.sender == Sender.USER
     val alignment = if (isUser) Alignment.CenterEnd else Alignment.CenterStart
+    val bubbleShape = if (isUser) {
+        RoundedCornerShape(topStart = 20.dp, topEnd = 4.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+    } else {
+        RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+    }
     val bubbleColor = when {
         message.isError -> MaterialTheme.colorScheme.errorContainer
         isUser -> MaterialTheme.colorScheme.primaryContainer
@@ -262,8 +269,9 @@ fun MessageBubble(
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
         Surface(
-            shape = RoundedCornerShape(16.dp),
+            shape = bubbleShape,
             color = bubbleColor,
+            tonalElevation = 2.dp,
             modifier = Modifier
                 .widthIn(max = 300.dp)
                 .combinedClickable(
@@ -396,7 +404,11 @@ fun MessageInput(
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(8.dp)
     ) {
         Column {
             AnimatedVisibility(visible = selectedImageUri != null) {

@@ -59,7 +59,7 @@ private fun MainChatListContent(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            MediumTopAppBar(
                 title = { Text("Чаты") },
                 actions = {
                     IconButton(onClick = onSettingsClicked) {
@@ -70,7 +70,7 @@ private fun MainChatListContent(
         },
         floatingActionButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                FloatingActionButton(
+                SmallFloatingActionButton(
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(creatorUrl))
                         context.startActivity(intent)
@@ -79,7 +79,7 @@ private fun MainChatListContent(
                 ) {
                     Icon(Icons.Default.PersonAdd, contentDescription = "Создать персонажа")
                 }
-                FloatingActionButton(onClick = { chatListViewModel.onFabClicked() }) {
+                LargeFloatingActionButton(onClick = { chatListViewModel.onFabClicked() }) {
                     Icon(Icons.Default.Add, contentDescription = "Новый чат")
                 }
             }
@@ -110,7 +110,7 @@ private fun MainChatListContent(
             }
 
             if (uiState.showPersonaDialog) {
-                PersonaSelectionDialog(
+                PersonaSelectionSheet(
                     officialPersonas = uiState.officialPersonas,
                     customPersonas = uiState.customPersonas,
                     onDismiss = { chatListViewModel.onDialogDismiss() },
@@ -175,7 +175,8 @@ fun ChatCardItem(
                 onClick = onClick,
                 onLongClick = onLongClick
             ),
-        shape = RoundedCornerShape(16.dp)
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -213,23 +214,67 @@ fun ChatCardItem(
 }
 
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun PersonaSelectionDialog(
+fun PersonaSelectionSheet(
     officialPersonas: List<Persona>,
     customPersonas: List<Persona>,
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit
 ) {
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text("Выберите персонажа") },
-        text = {
-            LazyColumn {
+        sheetState = sheetState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.extraLarge
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+            Text(
+                text = "Выберите персонажа",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(16.dp)
+            )
+
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                if (officialPersonas.isEmpty() && customPersonas.isEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp, horizontal = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Не удалось загрузить персонажей.\nПроверьте подключение к интернету.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
                 if (officialPersonas.isNotEmpty()) {
                     stickyHeader {
-                        Surface(modifier = Modifier.fillParentMaxWidth()) {
-                            Text("Официальные", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(8.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow
+                        ) {
+                            Text(
+                                "Официальные",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                         }
                     }
                     items(officialPersonas) { persona ->
@@ -239,8 +284,16 @@ fun PersonaSelectionDialog(
 
                 if (customPersonas.isNotEmpty()) {
                     stickyHeader {
-                        Surface(modifier = Modifier.fillParentMaxWidth()) {
-                            Text("Пользовательские", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(8.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow
+                        ) {
+                            Text(
+                                "Пользовательские",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                         }
                     }
                     items(customPersonas) { persona ->
@@ -248,9 +301,8 @@ fun PersonaSelectionDialog(
                     }
                 }
             }
-        },
-        confirmButton = {}
-    )
+        }
+    }
 }
 
 @Composable

@@ -1,7 +1,6 @@
 package chaos.alice.pro.ui.chat
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
@@ -95,14 +94,6 @@ class ChatViewModel @Inject constructor(
 
 
     fun onImageSelected(uri: Uri?) {
-        if (uri != null) {
-            try {
-                val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                context.contentResolver.takePersistableUriPermission(uri, takeFlags)
-            } catch (e: SecurityException) {
-                Log.e("ChatViewModel", "Failed to take persistable URI permission", e)
-            }
-        }
         _uiState.update { it.copy(selectedImageUri = uri) }
     }
 
@@ -110,26 +101,42 @@ class ChatViewModel @Inject constructor(
         val currentChatId = chatId ?: return
         if (text.isBlank() && imageUri == null) return
 
-        Log.d("ChatViewModel", "Sending message with imageUri: $imageUri")  // Отладка
-
         stopGeneration()
         generationJob = viewModelScope.launch {
+            var finalImageUri: String? = null
+            
+            if (imageUri != null) {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(imageUri)
+                    val fileName = "img_${System.currentTimeMillis()}.jpg"
+                    val file = java.io.File(context.filesDir, fileName)
+                    inputStream?.use { input ->
+                        file.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    finalImageUri = Uri.fromFile(file).toString()
+                } catch (e: Exception) {
+                    Log.e("ChatViewModel", "Failed to copy image", e)
+                    // Если не удалось скопировать, попробуем использовать оригинал (хотя это не надежно)
+                    finalImageUri = imageUri.toString()
+                }
+            }
+
             val userMessage = MessageEntity(
                 chatId = currentChatId,
                 text = text,
                 sender = Sender.USER,
                 timestamp = System.currentTimeMillis(),
-                imageUri = imageUri?.toString()
+                imageUri = finalImageUri
             )
 
             repository.insertUserMessage(userMessage)
 
-            // Очищаем URI в состоянии
             _uiState.update { it.copy(isLoading = true, selectedImageUri = null) }
 
             try {
-                repository.sendMessage(currentChatId, text, imageUri?.toString())
-                Log.d("ChatViewModel", "Message sent successfully")
+                repository.sendMessage(currentChatId, text, finalImageUri)
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Error sending message", e)
             } finally {

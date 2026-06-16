@@ -34,27 +34,41 @@ class ChatListViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     init {
+        loadData()
+    }
+
+    private fun loadData() {
         viewModelScope.launch {
             val (official, custom) = personaRepository.getAllPersonas()
-            val allPersonas = official + custom
             _uiState.update { it.copy(officialPersonas = official, customPersonas = custom) }
 
             chatRepository.getAllChats().collect { chats ->
-                val combinedList = chats.map { chat ->
-                    ChatWithPersona(
-                        chat = chat,
-                        persona = allPersonas.find { p -> p.id == chat.personaId }
-                    )
-                }
-                _uiState.update {
-                    it.copy(chatItems = combinedList, isLoading = false)
-                }
+                updateChatItems(chats, personaRepository.getAllPersonas())
             }
         }
     }
 
+    private fun updateChatItems(chats: List<ChatEntity>, personas: Pair<List<Persona>, List<Persona>>) {
+        val allPersonas = personas.first + personas.second
+        val combinedList = chats.map { chat ->
+            ChatWithPersona(
+                chat = chat,
+                persona = allPersonas.find { p -> p.id == chat.personaId }
+            )
+        }
+        _uiState.update {
+            it.copy(chatItems = combinedList, isLoading = false)
+        }
+    }
+
     fun onFabClicked() {
-        _uiState.update { it.copy(showPersonaDialog = true) }
+        viewModelScope.launch {
+            if (_uiState.value.officialPersonas.isEmpty() && _uiState.value.customPersonas.isEmpty()) {
+                val (official, custom) = personaRepository.getAllPersonas()
+                _uiState.update { it.copy(officialPersonas = official, customPersonas = custom) }
+            }
+            _uiState.update { it.copy(showPersonaDialog = true) }
+        }
     }
 
     fun onDialogDismiss() {

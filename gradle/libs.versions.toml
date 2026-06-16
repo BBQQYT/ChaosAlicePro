@@ -8,6 +8,7 @@ coreKtxVersion = "1.19.0"
 coreSplashscreen = "1.2.0"
 datastorePreferences = "1.2.1"
 espressoCoreVersion = "3.7.0"
+emoji2Emojipicker = "1.5.0"
 generativeai = "0.9.0"
 hiltAndroid = "2.59.2"
 hiltCompiler = "2.59.2"
@@ -19,9 +20,11 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 kotlinxCoroutinesAndroid = "1.11.0"
 kotlinxSerializationJson = "1.11.0"
-ktorClientAndroid = "3.5.0"
-ktorClientContentNegotiation = "3.5.0"
-ktorSerializationKotlinxJson = "3.5.0"
+# generativeai 0.9.0 (последняя версия устаревшего SDK) построен на Ktor 2.x.
+# Ktor 3.x с ним несовместим (NoClassDefFoundError io.ktor.client.plugins.HttpTimeout).
+ktorClientAndroid = "2.3.13"
+ktorClientContentNegotiation = "2.3.13"
+ktorSerializationKotlinxJson = "2.3.13"
 lifecycleRuntimeCompose = "2.10.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
@@ -61,6 +64,7 @@ androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "roomKtx"
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomRuntime" }
 androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilCompose" }
+androidx-emoji2-emojipicker = { module = "androidx.emoji2:emoji2-emojipicker", version.ref = "emoji2Emojipicker" }
 generativeai = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "generativeai" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hiltCompiler" }
