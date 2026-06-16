@@ -53,11 +53,10 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(
-    viewModel: ChatViewModel,
+    viewModel: ChatViewModel = hiltViewModel(),
     navController: NavController? = null,
     showTopBar: Boolean = true
 ) {
-    val viewModel: ChatViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()

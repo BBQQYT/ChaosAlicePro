@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class GeminiLlmProvider @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : LlmProvider {
 
     override suspend fun generateResponseStream(
@@ -28,7 +28,7 @@ class GeminiLlmProvider @Inject constructor(
         userMessage: MessageEntity
     ): Flow<String> {
 
-        val modelName = userMessage.modelName ?: "gemini-1.5-flash"
+        val modelName = userMessage.modelName ?: "gemini-2.5-flash"
 
         val model = GenerativeModel(
             modelName = modelName,
@@ -60,6 +60,16 @@ class GeminiLlmProvider @Inject constructor(
                     }
                 }
             }
+            add(content("user") {
+                userMessage.imageUri?.let {
+                    try {
+                        image(it.toUri().toBitmap(context))
+                    } catch (e: Exception) {
+                        Log.e("GeminiProvider", "Image Load Error", e)
+                    }
+                }
+                text(userMessage.text)
+            })
         }
 
         return model.generateContentStream(*fullHistory.toTypedArray())

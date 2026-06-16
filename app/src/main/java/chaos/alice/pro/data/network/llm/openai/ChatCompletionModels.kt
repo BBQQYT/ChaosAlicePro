@@ -1,6 +1,7 @@
+@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
+
 package chaos.alice.pro.data.network.llm.openai
 
-import android.annotation.SuppressLint
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement

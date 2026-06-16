@@ -13,14 +13,6 @@ import retrofit2.http.Url
 
 interface GenericLlmApiService {
 
-    @POST
-    suspend fun generateChatCompletion(
-        @Url url: String,
-        @Header("Authorization") apiKey: String,
-        @Header("HTTP-Referer") referer: String = "https://github.com/BBQQYT/CA-promt",
-        @Body request: ChatCompletionRequest
-    ): Response<ChatCompletionResponse>
-
 
     @Streaming
     @POST

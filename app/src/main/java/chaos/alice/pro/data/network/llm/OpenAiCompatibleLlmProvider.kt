@@ -12,10 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
-import okhttp3.ResponseBody
 import retrofit2.HttpException
 
 class OpenAiCompatibleLlmProvider @Inject constructor(
@@ -56,7 +54,6 @@ class OpenAiCompatibleLlmProvider @Inject constructor(
                 )
 
                 if (!response.isSuccessful) {
-                    val errorBody = response.errorBody()?.string()
                     throw HttpException(response)
                 }
 
@@ -89,7 +86,7 @@ class OpenAiCompatibleLlmProvider @Inject constructor(
                         val errorBody = e.response()?.errorBody()?.string()
                         try {
                             json.decodeFromString<ErrorResponse>(errorBody!!).error.message
-                        } catch (parseEx: Exception) {
+                        } catch (_: Exception) {
                             errorBody ?: e.message()
                         }
                     }

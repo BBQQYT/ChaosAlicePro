@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
-import chaos.alice.pro.data.TokenManager
-import chaos.alice.pro.data.network.llm.GeminiLlmProvider
 import chaos.alice.pro.data.models.ResponseLength
 
 @Singleton
@@ -34,14 +32,6 @@ class ChatRepository @Inject constructor(
     fun getChatHistory(chatId: Long): Flow<List<MessageEntity>> = chatDao.getMessagesForChat(chatId)
 
 
-    suspend fun editMessage(messageId: Long, newText: String) {
-        chatDao.updateMessageText(messageId, newText)
-    }
-
-    suspend fun deleteMessage(messageId: Long) {
-        chatDao.deleteMessageById(messageId)
-    }
-
 
 
     suspend fun editAndFork(chatId: Long, message: MessageEntity, newText: String): Boolean {
@@ -61,26 +51,48 @@ class ChatRepository @Inject constructor(
         chatDao.insertMessage(message)
     }
 
-    suspend fun sendMessage(chatId: Long) {
+    suspend fun deleteMessage(messageId: Long) {
+        chatDao.deleteMessageById(messageId)
+    }
+
+    suspend fun sendMessage(chatId: Long, userMessageText: String, userMessageImageUri: String?) {
+        // 1. Создаем "пустое" сообщение от модели, чтобы показать индикатор загрузки
         val modelMessage = MessageEntity(
             chatId = chatId,
             text = "...",
             sender = Sender.MODEL,
-            timestamp = System.currentTimeMillis() + 1
+            timestamp = System.currentTimeMillis() + 1 // Убедимся, что оно всегда после сообщения юзера
         )
         val modelMessageId = chatDao.insertMessage(modelMessage)
 
         try {
-            val historyWithUserMessage = chatDao.getMessagesForChat(chatId).first()
-            val userMessage = historyWithUserMessage.lastOrNull { it.sender == Sender.USER }
-                ?: throw Exception("No user message found to respond to.")
-
+            // 2. Получаем все нужные настройки
             val chat = chatDao.getChatById(chatId) ?: throw Exception("Chat not found")
             val persona = personaRepository.getPersonaById(chat.personaId)
             val activeProvider = tokenManager.getActiveProvider().first()
             val modelName = settingsRepository.getModelName().first()
-            val history = historyWithUserMessage.dropLast(1)
+            val apiKey = when (activeProvider) {
+                ApiProvider.GEMINI -> tokenManager.getGeminiKey().first()
+                ApiProvider.OPEN_AI -> tokenManager.getOpenAiKey().first()
+                ApiProvider.OPEN_ROUTER -> tokenManager.getOpenRouterKey().first()
+            } ?: throw IllegalStateException("API Key for provider ${activeProvider.displayName} not found!")
 
+            // 3. Формируем историю, ИСКЛЮЧАЯ последнее сообщение пользователя, которое мы передадим отдельно
+            val history = chatDao.getMessagesForChat(chatId).first().dropLast(2)
+
+            // 4. Создаем объект сообщения пользователя "на лету" со всеми данными
+            val userMessage = MessageEntity(
+                chatId = chatId,
+                text = userMessageText,
+                imageUri = userMessageImageUri,
+                sender = Sender.USER,
+                timestamp = System.currentTimeMillis()
+            ).apply {
+                this.apiProvider = activeProvider
+                this.modelName = modelName
+            }
+
+            // 5. Формируем системный промпт
             val responseLength = settingsRepository.responseLength.first()
             val baseSystemPrompt = persona?.prompt ?: ""
             val lengthInstruction = when(responseLength) {
@@ -90,50 +102,36 @@ class ChatRepository @Inject constructor(
             }
             val finalSystemPrompt = baseSystemPrompt + lengthInstruction
 
-            val apiKey = when (activeProvider) {
-                ApiProvider.GEMINI -> tokenManager.getGeminiKey().first()
-                ApiProvider.OPEN_AI -> tokenManager.getOpenAiKey().first()
-                ApiProvider.OPEN_ROUTER -> tokenManager.getOpenRouterKey().first()
-            }
-                ?: throw IllegalStateException("API Key for provider ${activeProvider.displayName} not found!")
+            // 6. Вызываем провайдер
             val llmProvider = llmProviderFactory.getProvider(activeProvider)
-
-            userMessage.apiProvider = activeProvider
-            userMessage.modelName = modelName
-
             val responseFlow = llmProvider.generateResponseStream(
                 apiKey = apiKey,
                 systemPrompt = finalSystemPrompt,
                 history = history,
-                userMessage = userMessage
+                userMessage = userMessage // Передаем наше свежесозданное сообщение
             )
 
+            // 7. Собираем ответ
             var accumulatedText = ""
-
             responseFlow.collect { chunk ->
                 accumulatedText += chunk
                 chatDao.updateMessageText(modelMessageId, accumulatedText)
             }
 
+            // 8. Генерируем заголовок, если это начало чата
             if (chatDao.getMessagesForChat(chatId).first().size <= 2) {
                 generateAndSetChatTitle(chatId)
             }
 
         } catch (e: Exception) {
-            Log.e("ChatRepository", "Error sending message (stream): ${e.message}")
-            Log.e("ChatRepository", "Stack trace:", e)
-            e.printStackTrace()
+            Log.e("ChatRepository", "Error sending message", e)
             val errorMessage = "Ошибка: ${e.message}"
             chatDao.getMessageById(modelMessageId)?.let {
-                chatDao.updateMessage(
-                    it.copy(
-                        text = errorMessage,
-                        isError = true
-                    )
-                )
+                chatDao.updateMessage(it.copy(text = errorMessage, isError = true))
             }
         }
     }
+
 
     private suspend fun generateAndSetChatTitle(chatId: Long) {
         try {
@@ -160,9 +158,9 @@ class ChatRepository @Inject constructor(
             )
             titlePromptMessage.apiProvider = activeProvider
             titlePromptMessage.modelName = when(activeProvider) {
-                ApiProvider.GEMINI -> "gemini-1.5-flash-latest"
+                ApiProvider.GEMINI -> "gemini-2.5-flash-lite"
                 ApiProvider.OPEN_AI -> "gpt-4o-mini"
-                ApiProvider.OPEN_ROUTER -> "google/gemini-1.5-flash"
+                ApiProvider.OPEN_ROUTER -> "nvidia/nemotron-nano-12b-v2-vl:free" // Изменено на nvidia/nemotron-nano-12b-v2-vl:free
             }
 
             var titleResponse = ""

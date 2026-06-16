@@ -109,6 +109,9 @@ class ChatViewModel @Inject constructor(
     fun sendMessage(text: String, imageUri: Uri?) {
         val currentChatId = chatId ?: return
         if (text.isBlank() && imageUri == null) return
+
+        Log.d("ChatViewModel", "Sending message with imageUri: $imageUri")  // Отладка
+
         stopGeneration()
         generationJob = viewModelScope.launch {
             val userMessage = MessageEntity(
@@ -116,12 +119,19 @@ class ChatViewModel @Inject constructor(
                 text = text,
                 sender = Sender.USER,
                 timestamp = System.currentTimeMillis(),
-                imageUri = imageUri?.toString() // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+                imageUri = imageUri?.toString()
             )
+
             repository.insertUserMessage(userMessage)
+
+            // Очищаем URI в состоянии
             _uiState.update { it.copy(isLoading = true, selectedImageUri = null) }
+
             try {
-                repository.sendMessage(currentChatId)
+                repository.sendMessage(currentChatId, text, imageUri?.toString())
+                Log.d("ChatViewModel", "Message sent successfully")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error sending message", e)
             } finally {
                 _uiState.update { it.copy(isLoading = false) }
             }
@@ -134,8 +144,12 @@ class ChatViewModel @Inject constructor(
         generationJob = null
         _uiState.update { it.copy(isLoading = false) }
     }
-    fun onRenameRequest() { _uiState.update { it.copy(showRenameDialog = true) } }
-    fun onRenameDialogDismiss() { _uiState.update { it.copy(showRenameDialog = false) } }
+    fun onRenameRequest() {
+        _uiState.update { it.copy(showRenameDialog = true) }
+    }
+    fun onRenameDialogDismiss() {
+        _uiState.update { it.copy(showRenameDialog = false) }
+    }
     fun onRenameConfirm(newTitle: String) {
         val currentChatId = chatId ?: return
         if (newTitle.isNotBlank()) {
@@ -148,40 +162,36 @@ class ChatViewModel @Inject constructor(
     fun onMessageLongPress(message: MessageEntity) {
         _uiState.update { it.copy(messageToAction = message) }
     }
-
     fun onEditRequest() {
         _uiState.update { it.copy(showEditMessageDialog = true) }
     }
-
     fun onDeleteRequest() {
         _uiState.update { it.copy(showDeleteMessageDialog = true) }
     }
 
     fun onConfirmEdit(newText: String) {
         val currentChatId = chatId ?: return
+        val message = _uiState.value.messageToAction ?: return
+        dismissActionDialogs()
+        if (newText.isBlank() || newText == message.text) return
         stopGeneration()
         generationJob = viewModelScope.launch {
-            _uiState.value.messageToAction?.let { message ->
-                if (newText.isNotBlank() && newText != message.text) {
-                    val forkCreated = repository.editAndFork(currentChatId, message, newText)
-                    if (forkCreated) {
-                        _uiState.update { it.copy(isLoading = true) }
-                        try {
-                            repository.sendMessage(currentChatId)
-                        } finally {
-                            _uiState.update { it.copy(isLoading = false) }
-                        }
-                    }
+            val forkCreated = repository.editAndFork(currentChatId, message, newText)
+            if (forkCreated) {
+                _uiState.update { it.copy(isLoading = true) }
+                try {
+                    // При редактировании картинки нет, передаем текст и null
+                    repository.sendMessage(currentChatId, newText, null)
+                } finally {
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             }
-            dismissActionDialogs()
         }
     }
     fun onConfirmDelete() {
+        val message = _uiState.value.messageToAction ?: return
         viewModelScope.launch {
-            _uiState.value.messageToAction?.let { message ->
-                repository.deleteMessage(message.id)
-            }
+            repository.deleteMessage(message.id)
             dismissActionDialogs()
         }
     }

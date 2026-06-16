@@ -11,7 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class TokenManager @Inject constructor(@ApplicationContext private val context: Context) {
+class TokenManager @Inject constructor(@param:ApplicationContext private val context: Context) {
 
     companion object {
         private val ACTIVE_PROVIDER_KEY = stringPreferencesKey("active_api_provider")
@@ -25,7 +25,7 @@ class TokenManager @Inject constructor(@ApplicationContext private val context: 
             val providerName = preferences[ACTIVE_PROVIDER_KEY] ?: ApiProvider.GEMINI.name
             try {
                 ApiProvider.valueOf(providerName)
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 ApiProvider.GEMINI
             }
         }
